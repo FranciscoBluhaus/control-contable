@@ -1,0 +1,12 @@
+{
+  "name": "control-contable-ocr",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-08-27",
+  // SUPABASE_ANON_KEY es pública por diseño (protegida por RLS, igual que en index.html) —
+  // no hace falta guardarla como secret. GEMINI_API_KEY sí, corre:
+  //   wrangler secret put GEMINI_API_KEY
+  "vars": {
+    "SUPABASE_URL": "https://sczkgnzoinbensmycwwm.supabase.co",
+    "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjemtnbnpvaW5iZW5zbXljd3dtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMzk0NDMsImV4cCI6MjA5OTYxNTQ0M30.sJoMYAWRc-qfO5LIa3N7yyluZKvZSV2TuerD1HgVRGE"
+  }
+}

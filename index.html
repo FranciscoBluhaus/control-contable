@@ -16,6 +16,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <style>
   :root{
     --navy:#0f1a3d;
@@ -351,6 +352,11 @@
   .ficha-item b{display:block; color:var(--muted); font-size:10.5px; text-transform:uppercase; letter-spacing:.3px; margin-bottom:2px;}
   .ficha-item span{color:var(--text); font-weight:600;}
 
+  .ficha-tabs{display:flex; gap:6px; margin-bottom:16px; border-bottom:1px solid var(--border);}
+  .ficha-tab{padding:9px 14px; font-size:13px; font-weight:600; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap;}
+  .ficha-tab.active{color:var(--violet); border-bottom-color:var(--violet);}
+  .ficha-tab:hover:not(.active){color:var(--navy);}
+
   .empty-state{text-align:center; padding:50px 20px; color:var(--muted);}
   .empty-state .ico{font-size:34px; margin-bottom:10px;}
   .empty-state b{color:var(--navy); display:block; margin-bottom:4px; font-size:14px;}
@@ -522,23 +528,35 @@
       <div class="brand-text"><b>Estudio Contable</b><span>Control &amp; Gestión</span></div>
     </div>
     <nav id="navMenu">
-      <button class="nav-item active" data-tab="dashboard">
+      <button class="nav-item active" data-tab="dashboard" data-staff-only>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
         Dashboard
       </button>
-      <button class="nav-item" data-tab="agenda">
+      <button class="nav-item" data-tab="comprobantes" data-cliente-only>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h12v18l-3-2-3 2-3-2-3 2V2z"/><path d="M9 7h6M9 11h6M9 15h3"/></svg>
+        Mis Comprobantes
+      </button>
+      <button class="nav-item" data-tab="misimpuestos" data-cliente-only>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M9 12h6M9 16h6M9 8h3"/></svg>
+        Mis Impuestos
+      </button>
+      <button class="nav-item" data-tab="agenda" data-staff-only>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><circle cx="8" cy="14" r="1"/><circle cx="12" cy="14" r="1"/><circle cx="16" cy="14" r="1"/><circle cx="8" cy="17.5" r="1"/><circle cx="12" cy="17.5" r="1"/></svg>
         Agenda
       </button>
-      <button class="nav-item" data-tab="clientes">
+      <button class="nav-item" data-tab="clientes" data-staff-only>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17.5" cy="8.5" r="2.6"/><path d="M15.7 14.2c2.9.3 5.3 2.4 5.3 5.6"/></svg>
         Clientes
       </button>
-      <button class="nav-item" data-tab="impuestos">
+      <button class="nav-item" data-tab="impuestos" data-staff-only>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M9 12h6M9 16h6M9 8h3"/></svg>
         Impuestos
       </button>
-      <button class="nav-item" data-tab="multas">
+      <button class="nav-item" data-tab="ventas" data-staff-only>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h13l4 4v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7z"/><path d="M16 7V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v2"/><path d="M8 13h8M8 17h5"/></svg>
+        Ventas
+      </button>
+      <button class="nav-item" data-tab="multas" data-staff-only>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9h.01M15 15h.01"/></svg>
         Multas SUNAT
       </button>
@@ -546,15 +564,15 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.3c0-1.3 1.2-2 2.6-2 1.6 0 2.6.9 2.6 2.1 0 2.8-5.2 1.6-5.2 4.4 0 1.2 1.1 2.1 2.7 2.1 1.4 0 2.6-.7 2.6-2"/></svg>
         Honorarios
       </button>
-      <button class="nav-item" data-tab="cronograma">
+      <button class="nav-item" data-tab="cronograma" data-staff-only>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M8 13h2M8 17h2M14 13h2M14 17h2"/></svg>
         Cronograma SUNAT
       </button>
-      <button class="nav-item" data-tab="g4ta">
+      <button class="nav-item" data-tab="g4ta" data-staff-only>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>
         Generador 4ta
       </button>
-      <button class="nav-item" data-tab="herramientas">
+      <button class="nav-item" data-tab="herramientas" data-staff-only>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.1-3.1a5 5 0 0 1-6.6 6.6L5.4 21.5a2 2 0 0 1-2.8-2.8L11.3 9a5 5 0 0 1 6.6-6.6l-3.1 3.1z"/></svg>
         Herramientas
       </button>
@@ -565,8 +583,8 @@
     </nav>
     <div class="sidebar-footer">
       <div class="side-user" id="sideUserEmail"></div>
-      <button class="side-btn" id="btnExport">⬇ Exportar respaldo</button>
-      <label class="side-btn" for="importFile" style="margin:0;">⬆ Importar respaldo antiguo</label>
+      <button class="side-btn" id="btnExport" data-staff-only>⬇ Exportar respaldo</button>
+      <label class="side-btn" for="importFile" style="margin:0;" data-staff-only>⬆ Importar respaldo antiguo</label>
       <input type="file" id="importFile" hidden accept="application/json">
       <button class="side-btn" id="btnLogout">Cerrar sesión</button>
     </div>
@@ -618,6 +636,61 @@
             <table>
               <thead><tr><th>Cliente</th><th>Período</th><th>Vence</th><th class="num">Saldo</th><th>Estado</th></tr></thead>
               <tbody id="tblPendientesHonorarios"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- MIS COMPROBANTES (rol cliente) -->
+      <section id="view-comprobantes" class="view">
+        <div class="stat-grid" id="misComprobantesKpis" style="margin-bottom:20px;"></div>
+        <div id="comprobantesPeriodoToolbar"></div>
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Comprobantes de compra</h3>
+            <button class="btn btn-primary btn-sm" onclick="openComprobanteCompraModal()">+ Subir factura de compra</button>
+          </div>
+          <div class="form-hint" style="margin:-6px 0 14px;">Sube las facturas que te emiten tus proveedores. Cuando adjuntes el sustento de pago, queda marcada como "Sustentado".</div>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead><tr><th>Fecha</th><th>Proveedor</th><th>Tipo</th><th class="num">Monto</th><th>Estado</th><th></th></tr></thead>
+              <tbody id="tblComprobantesCompra"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Comprobantes de venta</h3>
+            <button class="btn btn-primary btn-sm" onclick="openVentaModal(miClienteId())">+ Nuevo comprobante de venta</button>
+          </div>
+          <div class="form-hint" style="margin:-6px 0 14px;">Facturas que emite el estudio en tu representación, o que registras tú mismo. Sube el voucher cuando te paguen para marcarlas como "Cobrado".</div>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead><tr><th>Fecha</th><th>Cliente final</th><th class="num">Total</th><th class="num">Detracción</th><th class="num">Neto a cobrar</th><th>Estado</th><th></th></tr></thead>
+              <tbody id="tblComprobantesVenta"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Conciliación bancaria</h3>
+          </div>
+          <div class="form-hint" style="margin:-6px 0 14px;">Vista de solo lectura: tu contador concilia tus movimientos bancarios contra los comprobantes registrados. Usa el mismo filtro de período de arriba.</div>
+          <div id="misConciliacionPanel"></div>
+        </div>
+      </section>
+
+      <!-- MIS IMPUESTOS (rol cliente, solo lectura) -->
+      <section id="view-misimpuestos" class="view">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Impuestos</h3>
+            <button class="btn btn-outline btn-sm" onclick="exportarMisImpuestosPdf()">📄 Exportar PDF</button>
+          </div>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead><tr><th>Período</th><th>Vence</th><th class="num">Total</th><th class="num">Pagado</th><th class="num">Saldo</th><th>Estado</th></tr></thead>
+              <tbody id="tblMisImpuestos"></tbody>
             </table>
           </div>
         </div>
@@ -698,6 +771,27 @@
           <table>
             <thead><tr><th></th><th>Impuesto</th><th>Período</th><th>Vence</th><th class="num">Total</th><th class="num">Abonado</th><th class="num">Saldo</th><th>Estado</th><th></th></tr></thead>
             <tbody id="tblImpuestos"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- VENTAS (staff: super_admin + usuario con el cliente asignado) -->
+      <section id="view-ventas" class="view">
+        <div class="filter-bar">
+          <select id="fVentaCliente" onchange="renderVentas()"><option value="">Todos los clientes</option></select>
+          <select id="fVentaEstado" onchange="renderVentas()">
+            <option value="">Todos los estados</option>
+            <option value="pendiente_cobro">Pendiente de cobro</option>
+            <option value="parcial_cobro">Parcial</option>
+            <option value="cobrado">Cobrado</option>
+          </select>
+          <div class="spacer"></div>
+          <button class="btn btn-primary" onclick="openVentaModal()">+ Nuevo comprobante de venta</button>
+        </div>
+        <div class="panel" style="padding:0; overflow-x:auto;">
+          <table>
+            <thead><tr><th>Cliente</th><th>Fecha</th><th>Cliente final</th><th class="num">Total</th><th class="num">Detracción</th><th class="num">Neto a cobrar</th><th>Estado</th><th></th></tr></thead>
+            <tbody id="tblVentas"></tbody>
           </table>
         </div>
       </section>
@@ -1388,7 +1482,13 @@
       </div>`;
   }
   window.addEventListener('load', function(){
-    setTimeout(mostrarErrorFatal, 5000);
+    // loadAllData() hace varias idas y vueltas al servidor (perfil, datos
+    // base, y un batch en paralelo de tablas opcionales) antes de mostrar
+    // appRoot — 5s era demasiado ajustado en una conexión normal y disparaba
+    // este error incluso con una carga exitosa pero un poco lenta. Con las
+    // consultas ya paralelizadas (ver loadAllData) un margen más generoso
+    // sigue siendo un watchdog razonable para una carga real que sí falló.
+    setTimeout(mostrarErrorFatal, 9000);
   });
 })();
 
@@ -1398,13 +1498,16 @@
    ================================================================ */
 const SUPABASE_URL = "https://sczkgnzoinbensmycwwm.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjemtnbnpvaW5iZW5zbXljd3dtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMzk0NDMsImV4cCI6MjA5OTYxNTQ0M30.sJoMYAWRc-qfO5LIa3N7yyluZKvZSV2TuerD1HgVRGE";
+// Worker de Cloudflare que lee comprobantes con Gemini (ver /worker-ocr en el repo).
+// Reemplázala por la URL real una vez que despliegues el Worker con "wrangler deploy".
+const OCR_WORKER_URL = "https://control-contable-ocr.bluhaus.workers.dev";
 /* ================================================================ */
 
 let sb = null;
 let currentUser = null;
 let authMode = 'login';
 
-let state = { clientes: [], cuentas: [], cronograma: [], verificadorClave: null, miPerfil: null, usuarios: [], asignaciones: [], tiposImpuesto: [], parametrosRenta: [], uitValores: [], agendaEventos: [] };
+let state = { clientes: [], cuentas: [], cronograma: [], verificadorClave: null, miPerfil: null, usuarios: [], asignaciones: [], tiposImpuesto: [], parametrosRenta: [], uitValores: [], agendaEventos: [], comprobantesCompra: [], comprobantesVenta: [], pagos: [], conciliacionMovimientos: [] };
 let anioResumenIRActual = null;
 let expandedRows = new Set();
 let expandedGrupos = new Set();
@@ -1468,9 +1571,10 @@ async function getMasterKey(){
 
 /* ================= HELPERS ================= */
 function uid(){ return 'id_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
-function fmtMoney(n){
+function fmtMoney(n, moneda){
   n = Number(n)||0;
-  return 'S/ ' + n.toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const simbolo = moneda==='USD' ? 'US$ ' : 'S/ ';
+  return simbolo + n.toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 function fmtPeriodo(p){
@@ -1478,6 +1582,152 @@ function fmtPeriodo(p){
   const [y,m] = p.split('-');
   if(!m) return p;
   return MESES[parseInt(m,10)-1] + ' ' + y;
+}
+
+/* ---- Filtro de período (mes/año) para comprobantes — mismo patrón visual
+   que la navegación de mes de Agenda (ag-nav / agNavMes), aplicado sobre
+   fecha_emision. Por defecto muestra el mes actual; los comprobantes sin
+   fecha_emision (aún no se completó a mano) no se ocultan nunca, para no
+   "perder" registros silenciosamente. ---- */
+function periodoDeFecha(fechaISO){ return fechaISO ? fechaISO.slice(0,7) : null; }
+function periodoActualComprobantes(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+}
+// sumarMesesPeriodo(periodo, n) ya existe más abajo (la usa el módulo de
+// Impuestos) — se reutiliza tal cual, mismo contrato: "YYYY-MM" + delta -> "YYYY-MM".
+function filtrarPorPeriodo(items, periodo, todos){
+  if(todos) return items;
+  return items.filter(x=>!x.fechaEmision || periodoDeFecha(x.fechaEmision)===periodo);
+}
+function periodoToolbarHtml(navFn, toggleFn, periodo, todos, exportExcelFn, exportZipFn){
+  const exportButtons = (exportExcelFn && exportZipFn) ? `
+      <button class="btn btn-outline btn-sm" onclick="${exportExcelFn}()">📊 Excel</button>
+      <button class="btn btn-outline btn-sm" onclick="${exportZipFn}()">🗜️ ZIP</button>
+  ` : '';
+  return `
+    <div class="ag-toolbar" style="margin-bottom:16px;">
+      <div class="ag-nav">
+        <button onclick="${navFn}(-1)" aria-label="Mes anterior" ${todos?'disabled':''}>‹</button>
+        <div class="ag-month-label" style="min-width:110px;">${todos ? 'Todos los períodos' : fmtPeriodo(periodo)}</div>
+        <button onclick="${navFn}(1)" aria-label="Mes siguiente" ${todos?'disabled':''}>›</button>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-outline btn-sm" onclick="${toggleFn}()">${todos ? 'Ver por mes' : 'Ver todos'}</button>
+        ${exportButtons}
+      </div>
+    </div>
+  `;
+}
+function periodoParaArchivo(periodo, todos){ return todos ? 'todos' : periodo; }
+
+/* ---- Exportar comprobantes (Excel de datos + ZIP de archivos), respetando
+   el filtro de período activo en cada contexto (Mis Comprobantes / ficha de
+   cliente). Reutiliza XLSX (ya cargado) igual que el exportador de Impuestos,
+   y JSZip para el paquete de archivos reales. ---- */
+const REGEX_MARCAS_DIACRITICAS = new RegExp('[' + String.fromCharCode(0x0300) + '-' + String.fromCharCode(0x036f) + ']', 'g');
+function sanitizeNombreArchivo(s, maxLen){
+  maxLen = maxLen || 40;
+  return (s || '')
+    .normalize('NFD').replace(REGEX_MARCAS_DIACRITICAS, '') // quita tildes (NFD + rango de marcas combinantes)
+    .replace(/[\/\\:*?"<>|]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, maxLen) || 'sn';
+}
+function nombreBaseArchivo(fechaEmision, contraparte, numero, id){
+  const fecha = fechaEmision || 'sin-fecha';
+  const parteContraparte = sanitizeNombreArchivo(contraparte, 30);
+  const parteNumero = sanitizeNombreArchivo(numero, 20);
+  const sufijo = (id || '').replace(/-/g, '').slice(-4) || Math.random().toString(36).slice(2, 6);
+  return `${fecha}_${parteContraparte}_${parteNumero}_${sufijo}`;
+}
+function descargarBlob(blob, nombreArchivo){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nombreArchivo;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function exportarComprobantesExcel(clienteNombreStr, compras, ventas, periodoLabel){
+  const wb = XLSX.utils.book_new();
+
+  const filasCompras = [
+    ['Fecha','Tipo','N°','RUC','Razón social','Concepto','Moneda','Monto','IGV','Retención','Neto','Pagado','Saldo','Estado'],
+    ...compras.map(c=>[
+      c.fechaEmision||'', c.tipoComprobante||'', c.numeroComprobante||'',
+      c.rucProveedor||'', c.razonSocialProveedor||'', c.concepto||'', c.moneda||'PEN',
+      c.montoTotal ?? '', c.montoIgv ?? '', c.montoRetencion ?? '', netoComprobanteCompra(c),
+      montoPagadoComprobante('compra', c), saldoComprobante('compra', c),
+      estadoComprobanteLabel('compra', c.estado)
+    ])
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filasCompras), 'Compras');
+
+  const filasVentas = [
+    ['Fecha','Tipo','N°','RUC','Razón social','Concepto','Moneda','Monto','Detracción','Retención','Neto a cobrar','Pagado','Saldo','Estado'],
+    ...ventas.map(v=>[
+      v.fechaEmision||'', v.tipoComprobante||'', v.numeroComprobante||'',
+      v.rucClienteFinal||'', v.razonSocialClienteFinal||'', v.concepto||'', v.moneda||'PEN',
+      v.montoTotal ?? '', v.detraccionMonto ?? '', v.montoRetencion ?? '', v.netoCobrar ?? '',
+      montoPagadoComprobante('venta', v), saldoComprobante('venta', v),
+      estadoComprobanteLabel('venta', v.estado)
+    ])
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filasVentas), 'Ventas');
+
+  XLSX.writeFile(wb, `comprobantes_${sanitizeNombreArchivo(clienteNombreStr)}_${periodoLabel}.xlsx`);
+}
+
+async function exportarComprobantesZip(clienteNombreStr, compras, ventas, pagos, periodoLabel){
+  if(typeof JSZip === 'undefined'){ showToast('No se pudo cargar la librería de ZIP', true); return; }
+  if(compras.length===0 && ventas.length===0){ showToast('No hay comprobantes que exportar en este período', true); return; }
+  showToast('Preparando ZIP, esto puede tardar unos segundos...');
+
+  const zip = new JSZip();
+  const carpetaCompras = zip.folder('Compras');
+  const carpetaVentas = zip.folder('Ventas');
+
+  async function agregarArchivo(carpeta, path, nombreBase){
+    if(!path) return;
+    try{
+      const {data, error} = await sb.storage.from('comprobantes').createSignedUrl(path, 120);
+      if(error || !data) return;
+      const resp = await fetch(data.signedUrl);
+      if(!resp.ok) return;
+      const blob = await resp.blob();
+      const ext = path.includes('.') ? path.split('.').pop() : 'bin';
+      carpeta.file(`${nombreBase}.${ext}`, blob);
+    }catch(e){ /* si un archivo puntual falla, no se detiene todo el ZIP */ }
+  }
+
+  for(const c of compras){
+    const base = nombreBaseArchivo(c.fechaEmision, c.razonSocialProveedor, c.numeroComprobante, c.id);
+    await agregarArchivo(carpetaCompras, c.archivoUrl, base);
+    const pagosLigados = pagos.filter(p=>p.comprobanteCompraId===c.id);
+    for(let i=0; i<pagosLigados.length; i++){
+      const sufijo = pagosLigados.length>1 ? `_sustento${i+1}` : '_sustento';
+      await agregarArchivo(carpetaCompras, pagosLigados[i].archivoUrl, base + sufijo);
+    }
+  }
+  for(const v of ventas){
+    const base = nombreBaseArchivo(v.fechaEmision, v.razonSocialClienteFinal, v.numeroComprobante, v.id);
+    await agregarArchivo(carpetaVentas, v.archivoUrl, base);
+    const pagosLigados = pagos.filter(p=>p.comprobanteVentaId===v.id);
+    for(let i=0; i<pagosLigados.length; i++){
+      const sufijo = pagosLigados.length>1 ? `_voucher${i+1}` : '_voucher';
+      await agregarArchivo(carpetaVentas, pagosLigados[i].archivoUrl, base + sufijo);
+    }
+  }
+
+  const blob = await zip.generateAsync({type:'blob'});
+  descargarBlob(blob, `comprobantes_${sanitizeNombreArchivo(clienteNombreStr)}_${periodoLabel}.zip`);
+  showToast('ZIP descargado');
 }
 function fmtFecha(f){
   if(!f) return '—';
@@ -1504,8 +1754,178 @@ function estadoCuenta(cuenta){
   return base;
 }
 function estadoLabel(e){ return {pendiente:'Pendiente', parcial:'Parcial', pagado:'Pagado', vencido:'Vencido'}[e] || e; }
+
+/* ---- Pagos parciales de comprobantes (compra/venta) — reutiliza saldo()/
+   estadoCuenta() tal cual, armando un objeto temporal {montoTotal, abonos}
+   con los pagos vinculados (misma forma que usan las cuentas: monto por
+   fila). estadoCuenta() nunca da 'vencido' aquí porque el objeto temporal
+   no tiene fechaVenc — solo interesan pendiente/parcial/pagado. ---- */
+function pagosDeComprobante(tipo, comprobanteId){
+  return state.pagos.filter(p =>
+    tipo==='compra' ? p.comprobanteCompraId===comprobanteId : p.comprobanteVentaId===comprobanteId
+  );
+}
+function netoComprobanteCompra(x){
+  return Number(x.montoTotal||0) - Number(x.montoRetencion||0);
+}
+// Celda "Monto" para tablas de compra: neto en negrita (lo que realmente hay
+// que pagar), bruto como línea chica debajo solo cuando hay retención — evita
+// agregar una columna nueva a tablas que ya están anchas.
+function montoCompraHtml(c){
+  if(c.montoTotal==null) return '—';
+  const neto = netoComprobanteCompra(c);
+  const tieneRetencion = Number(c.montoRetencion||0) > 0;
+  return `${fmtMoney(neto, c.moneda)}${tieneRetencion ? `<div class="cell-muted" style="font-size:10.5px;">Bruto: ${fmtMoney(c.montoTotal, c.moneda)}</div>` : ''}`;
+}
+// Celda "Detracción" para tablas de venta: agrega la retención como línea
+// chica debajo cuando aplica, mismo criterio que montoCompraHtml.
+function detraccionVentaHtml(v){
+  const base = v.detraccionMonto!=null ? fmtMoney(v.detraccionMonto, v.moneda) : '—';
+  const tieneRetencion = Number(v.montoRetencion||0) > 0;
+  return `${base}${tieneRetencion ? `<div class="cell-muted" style="font-size:10.5px;">Retención: ${fmtMoney(v.montoRetencion, v.moneda)}</div>` : ''}`;
+}
+
+/* ---- KPIs multi-moneda: nunca se mezcla PEN con USD en un mismo total —
+   se agrupa por moneda y se muestra cada una en su propia línea dentro del
+   mismo stat-card (una sola línea en el caso común de que todo sea PEN). ---- */
+function agruparSaldoPorMoneda(items, tipo){
+  const grupos = {};
+  items.forEach(x=>{
+    const m = x.moneda || 'PEN';
+    grupos[m] = (grupos[m]||0) + saldoComprobante(tipo, x);
+  });
+  return grupos;
+}
+function agruparCampoPorMoneda(items, campo){
+  const grupos = {};
+  items.forEach(x=>{
+    const m = x.moneda || 'PEN';
+    grupos[m] = (grupos[m]||0) + Number(x[campo]||0);
+  });
+  return grupos;
+}
+function fmtMoneyPorMoneda(grupos){
+  const monedas = Object.keys(grupos);
+  if(monedas.length===0) return fmtMoney(0);
+  return monedas.map(m=>fmtMoney(grupos[m], m)).join('<br>');
+}
+function totalComparableComprobante(tipo, x){
+  // compra: neto = bruto - retención (calculado al vuelo, no se guarda).
+  // venta: neto_cobrar ya viene calculado y guardado (bruto - detracción - retención).
+  return tipo==='compra' ? netoComprobanteCompra(x) : Number(x.netoCobrar||0);
+}
+function montoPagadoComprobante(tipo, x){
+  return abonado({abonos: pagosDeComprobante(tipo, x.id)});
+}
+function saldoComprobante(tipo, x){
+  return saldo({montoTotal: totalComparableComprobante(tipo, x), abonos: pagosDeComprobante(tipo, x.id)});
+}
+function estadoBaseComprobante(tipo, x){
+  // 'pendiente' | 'parcial' | 'pagado' (nunca 'vencido')
+  return estadoCuenta({montoTotal: totalComparableComprobante(tipo, x), abonos: pagosDeComprobante(tipo, x.id)});
+}
+const ESTADOS_FINALES_COMPROBANTE = { compra: 'sustentado', venta: 'cobrado' };
+function estadoComprobanteLabel(tipo, estadoRaw){
+  const finalTxt = tipo==='compra' ? 'Sustentado' : 'Cobrado';
+  if(estadoRaw === ESTADOS_FINALES_COMPROBANTE[tipo]) return finalTxt;
+  if(estadoRaw === (tipo==='compra' ? 'parcial_sustento' : 'parcial_cobro')) return 'Parcial';
+  return tipo==='compra' ? 'Falta sustento' : 'Pendiente de cobro';
+}
+function estadoComprobanteBadge(tipo, x, badgeAntiguedadFn){
+  const estadoRaw = x.estado;
+  let badge;
+  if(estadoRaw === ESTADOS_FINALES_COMPROBANTE[tipo]) badge = badgeHtml('pagado', estadoComprobanteLabel(tipo, estadoRaw));
+  else if(estadoRaw === (tipo==='compra' ? 'parcial_sustento' : 'parcial_cobro')){
+    badge = badgeHtml('parcial', 'Parcial · Saldo ' + fmtMoney(saldoComprobante(tipo, x)));
+  } else {
+    badge = badgeAntiguedadFn ? badgeAntiguedadFn(diasAntiguedad(x.fechaEmision)) : badgeHtml('pendiente', estadoComprobanteLabel(tipo, estadoRaw));
+  }
+  return badge + pagosToggleHtml(tipo, x.id);
+}
+
+/* ---- Detalle de pagos individuales por comprobante (fecha + monto), mismo
+   patrón visual que la lista de abonos de Impuestos (toggle-abonos/abonos-row
+   /abono-item) — reutilizando esas clases CSS tal cual. El toggle se muestra
+   dentro de la misma celda de Estado (no se agrega columna nueva a ninguna
+   tabla), así el colspan de la fila expandida es el mismo que ya usa cada
+   tabla para su fila vacía. ---- */
+let pagosExpandedRows = new Set();
+function togglePagosComprobante(tipo, comprobanteId){
+  const key = tipo+':'+comprobanteId;
+  if(pagosExpandedRows.has(key)) pagosExpandedRows.delete(key); else pagosExpandedRows.add(key);
+  renderAll();
+  refrescarFichaClientePaneles();
+}
+function pagosToggleHtml(tipo, comprobanteId){
+  const n = pagosDeComprobante(tipo, comprobanteId).length;
+  if(n===0) return '';
+  const isOpen = pagosExpandedRows.has(tipo+':'+comprobanteId);
+  return ` <button class="toggle-abonos" onclick="togglePagosComprobante('${tipo}','${comprobanteId}')" title="Ver pagos">${isOpen?'▾':'▸'} ${n}</button>`;
+}
+function pagosExpandedRowHtml(tipo, comprobanteId, colspan, puedeEliminarFn){
+  if(!pagosExpandedRows.has(tipo+':'+comprobanteId)) return '';
+  // Un pago no tiene moneda propia — hereda la del comprobante padre (no se
+  // modela conversión de moneda: un pago contra una factura en USD es en USD).
+  const comprobante = tipo==='compra'
+    ? state.comprobantesCompra.find(x=>x.id===comprobanteId)
+    : state.comprobantesVenta.find(x=>x.id===comprobanteId);
+  const moneda = comprobante?.moneda || 'PEN';
+  const pagos = pagosDeComprobante(tipo, comprobanteId).slice().sort((a,b)=>(a.fechaPago||'').localeCompare(b.fechaPago||''));
+  const itemsHtml = pagos.map(p=>{
+    const puedeEliminar = puedeEliminarFn ? puedeEliminarFn(p) : true;
+    return `<div class="abono-item">
+      <span><span class="d">${p.fechaPago?fmtFecha(p.fechaPago):'sin fecha'}</span> &nbsp; ${fmtMoney(p.monto, moneda)}${p.metodo?` · <span class="d">${escapeHtml(p.metodo)}</span>`:''}${p.archivoUrl?` · <button class="btn-ghost btn-sm" style="padding:2px 4px;" onclick="verArchivoComprobante('${p.archivoUrl}')">📎 Ver</button>`:''}</span>
+      ${puedeEliminar ? `<button class="btn-danger-ghost btn-sm" onclick="eliminarPagoIndividual('${tipo}','${comprobanteId}','${p.id}')">✕</button>` : ''}
+    </div>`;
+  }).join('');
+  return `<tr class="abonos-row"><td colspan="${colspan}"><div class="abonos-wrap"><div class="abonos-list">${itemsHtml}</div></div></td></tr>`;
+}
+function recalcularEstadoLocalComprobante(tipo, comprobanteId){
+  if(tipo==='compra'){
+    const c = state.comprobantesCompra.find(x=>x.id===comprobanteId);
+    if(c){
+      const base = estadoBaseComprobante('compra', c);
+      c.estado = base==='pagado' ? 'sustentado' : base==='parcial' ? 'parcial_sustento' : 'pendiente_sustento';
+    }
+  } else {
+    const v = state.comprobantesVenta.find(x=>x.id===comprobanteId);
+    if(v){
+      const base = estadoBaseComprobante('venta', v);
+      v.estado = base==='pagado' ? 'cobrado' : base==='parcial' ? 'parcial_cobro' : 'pendiente_cobro';
+    }
+  }
+}
+async function eliminarPagoIndividual(tipo, comprobanteId, pagoId){
+  if(!confirm('¿Eliminar este pago? Se recalculará el saldo pendiente del comprobante.')) return;
+  try{
+    const {error} = await sb.from('pagos').delete().eq('id', pagoId);
+    if(error) throw error;
+    state.pagos = state.pagos.filter(p=>p.id!==pagoId);
+    recalcularEstadoLocalComprobante(tipo, comprobanteId);
+    renderAll();
+    refrescarFichaClientePaneles();
+    showToast('Pago eliminado');
+  }catch(err){
+    showToast('Error eliminando: ' + err.message, true);
+  }
+}
+
 function badgeHtml(estado, labelOverride){
   return `<span class="badge badge-${estado}"><span class="badge-dot"></span>${labelOverride||estadoLabel(estado)}</span>`;
+}
+// Semáforo de antigüedad para comprobantes (0-15 / 15-30 / +30 días desde la
+// emisión) — mismo mecanismo que badgeYtexto (daysUntil + badgeHtml), pero
+// contando antigüedad hacia atrás en vez de días hasta un vencimiento futuro.
+function diasAntiguedad(fechaEmision){
+  if(!fechaEmision) return null;
+  const d = daysUntil(fechaEmision);
+  return d===null ? null : Math.abs(d);
+}
+function badgeAntiguedad(dias){
+  if(dias===null) return badgeHtml('pendiente', 'Sin fecha');
+  if(dias<=15) return badgeHtml('pendiente', dias+'d');
+  if(dias<=30) return badgeHtml('parcial', dias+'d');
+  return badgeHtml('vencido', dias+'d');
 }
 function tipoPillClass(tipo){
   if(tipo==='IGV') return 'pill-igv';
@@ -1601,6 +2021,44 @@ function mapCuentaFromDb(row){
     abonos: (row.abonos||[]).map(a=>({id:a.id, fecha:a.fecha, monto:a.monto}))
   };
 }
+function mapComprobanteCompraFromDb(row){
+  return {
+    id: row.id, clienteId: row.cliente_id, archivoUrl: row.archivo_url,
+    rucProveedor: row.ruc_proveedor, razonSocialProveedor: row.razon_social_proveedor,
+    fechaEmision: row.fecha_emision, tipoComprobante: row.tipo_comprobante,
+    numeroComprobante: row.numero_comprobante, concepto: row.concepto, montoTotal: row.monto_total, montoIgv: row.monto_igv,
+    montoRetencion: row.monto_retencion, porcentajeRetencion: row.porcentaje_retencion, moneda: row.moneda || 'PEN',
+    estado: row.estado, ocrRaw: row.ocr_raw, subidoPor: row.subido_por, createdAt: row.created_at
+  };
+}
+function mapComprobanteVentaFromDb(row){
+  return {
+    id: row.id, clienteId: row.cliente_id, archivoUrl: row.archivo_url,
+    rucClienteFinal: row.ruc_cliente_final, razonSocialClienteFinal: row.razon_social_cliente_final,
+    fechaEmision: row.fecha_emision, tipoComprobante: row.tipo_comprobante,
+    numeroComprobante: row.numero_comprobante, concepto: row.concepto, montoTotal: row.monto_total,
+    detraccionPct: row.detraccion_pct, detraccionMonto: row.detraccion_monto,
+    montoRetencion: row.monto_retencion, porcentajeRetencion: row.porcentaje_retencion, moneda: row.moneda || 'PEN',
+    netoCobrar: row.neto_cobrar,
+    estado: row.estado, ocrRaw: row.ocr_raw, subidoPor: row.subido_por, createdAt: row.created_at
+  };
+}
+function mapPagoFromDb(row){
+  return {
+    id: row.id, comprobanteCompraId: row.comprobante_compra_id, comprobanteVentaId: row.comprobante_venta_id,
+    archivoUrl: row.archivo_url, monto: row.monto, fechaPago: row.fecha_pago, metodo: row.metodo,
+    subidoPor: row.subido_por, createdAt: row.created_at
+  };
+}
+function mapConciliacionMovimientoFromDb(row){
+  return {
+    id: row.id, clienteId: row.cliente_id, archivoEstadoCuenta: row.archivo_estado_cuenta,
+    banco: row.banco, nombreArchivoOriginal: row.nombre_archivo_original,
+    periodoInicio: row.periodo_inicio, periodoFin: row.periodo_fin,
+    fecha: row.fecha, monto: row.monto, moneda: row.moneda || 'PEN', tipo: row.tipo, descripcion: row.descripcion,
+    pagoId: row.pago_id, estado: row.estado, subidoPor: row.subido_por, createdAt: row.created_at
+  };
+}
 
 /* ================= CARGA DE DATOS ================= */
 async function bootstrapPerfil(){
@@ -1618,15 +2076,26 @@ async function bootstrapPerfil(){
 }
 
 function applyRoleUI(){
-  const esAdmin = state.miPerfil?.rol === 'super_admin';
+  const rol = state.miPerfil?.rol;
+  const esAdmin = rol === 'super_admin';
+  const esCliente = rol === 'cliente';
   document.querySelectorAll('[data-admin-only]').forEach(el=>{
     el.style.display = esAdmin ? '' : 'none';
+  });
+  // El rol 'cliente' (la empresa, no el estudio) solo debe ver "Mis Comprobantes" —
+  // nada de las herramientas internas del estudio (agenda, cartera de clientes,
+  // calculadoras SUNAT, etc.), aunque esos datos ya estén protegidos por RLS.
+  document.querySelectorAll('[data-staff-only]').forEach(el=>{
+    el.style.display = esCliente ? 'none' : '';
+  });
+  document.querySelectorAll('[data-cliente-only]').forEach(el=>{
+    el.style.display = esCliente ? '' : 'none';
   });
   document.querySelectorAll('#tblCronogramaBody input[type=date]').forEach(inp=>{
     inp.disabled = !esAdmin;
   });
-  document.getElementById('sideUserEmail').textContent =
-    (currentUser?.email || '') + (esAdmin ? ' · Super admin' : ' · Usuario');
+  const rolLabel = esAdmin ? 'Super admin' : (esCliente ? 'Cliente' : 'Usuario');
+  document.getElementById('sideUserEmail').textContent = (currentUser?.email || '') + ' · ' + rolLabel;
 }
 
 async function loadAllData(){
@@ -1654,21 +2123,61 @@ async function loadAllData(){
     state.verificadorClave = config ? config.verificador : null;
     state.tiposImpuesto = (tiposImp||[]).map(mapTipoImpuestoFromDb);
 
-    try{
-      const {data: uitVals, error: e6} = await sb.from('uit_valores').select('*').order('anio');
-      if(e6) throw e6;
-      state.uitValores = (uitVals||[]).map(mapUitValorFromDb);
-    }catch(err){
-      console.warn('Tabla uit_valores no disponible todavía (corre el SQL para habilitarla):', err.message);
+    // Estas 4 consultas son independientes entre sí (ninguna depende del
+    // resultado de otra) y cada una se degrada sola si su tabla todavía no
+    // existe (por eso Promise.allSettled, no Promise.all) — se disparan TODAS
+    // en paralelo en vez de una tras otra. Antes cada bloque tenía su propio
+    // `await` secuencial: con la carga inicial ya en ~6 idas y vueltas al
+    // servidor, agregar conciliacion_movimientos como una 5ta parada
+    // secuencial más empujó el tiempo total de carga por encima del timeout
+    // fijo de la pantalla de error fatal (ver más abajo, ~5s) en conexiones
+    // normales — de ahí el bug reportado ("con F12 abierto sí carga").
+    const [uitR, agendaR, comprobantesR, conciliacionR] = await Promise.allSettled([
+      sb.from('uit_valores').select('*').order('anio'),
+      sb.from('agenda_eventos').select('*').order('fecha'),
+      Promise.all([
+        sb.from('comprobantes_compra').select('*').order('created_at', {ascending:false}),
+        sb.from('comprobantes_venta').select('*').order('created_at', {ascending:false}),
+        sb.from('pagos').select('*').order('created_at', {ascending:false})
+      ]).then(([cc, cv, pg])=>{
+        if(cc.error) throw cc.error;
+        if(cv.error) throw cv.error;
+        if(pg.error) throw pg.error;
+        return {cc: cc.data, cv: cv.data, pg: pg.data};
+      }),
+      sb.from('conciliacion_movimientos').select('*').order('fecha')
+    ]);
+
+    if(uitR.status==='fulfilled' && !uitR.value.error){
+      state.uitValores = (uitR.value.data||[]).map(mapUitValorFromDb);
+    } else {
+      console.warn('Tabla uit_valores no disponible todavía (corre el SQL para habilitarla):', (uitR.reason||uitR.value?.error)?.message);
       state.uitValores = [];
     }
-    try{
-      const {data: agendaRows, error: e7} = await sb.from('agenda_eventos').select('*').order('fecha');
-      if(e7) throw e7;
-      state.agendaEventos = (agendaRows||[]).map(mapAgendaFromDb);
-    }catch(err){
-      console.warn('Tabla agenda_eventos no disponible todavía (corre el SQL para habilitarla):', err.message);
+
+    if(agendaR.status==='fulfilled' && !agendaR.value.error){
+      state.agendaEventos = (agendaR.value.data||[]).map(mapAgendaFromDb);
+    } else {
+      console.warn('Tabla agenda_eventos no disponible todavía (corre el SQL para habilitarla):', (agendaR.reason||agendaR.value?.error)?.message);
       state.agendaEventos = [];
+    }
+
+    if(comprobantesR.status==='fulfilled'){
+      state.comprobantesCompra = (comprobantesR.value.cc||[]).map(mapComprobanteCompraFromDb);
+      state.comprobantesVenta = (comprobantesR.value.cv||[]).map(mapComprobanteVentaFromDb);
+      state.pagos = (comprobantesR.value.pg||[]).map(mapPagoFromDb);
+    } else {
+      console.warn('Tablas de comprobantes no disponibles todavía:', comprobantesR.reason?.message);
+      state.comprobantesCompra = [];
+      state.comprobantesVenta = [];
+      state.pagos = [];
+    }
+
+    if(conciliacionR.status==='fulfilled' && !conciliacionR.value.error){
+      state.conciliacionMovimientos = (conciliacionR.value.data||[]).map(mapConciliacionMovimientoFromDb);
+    } else {
+      console.warn('Tabla conciliacion_movimientos no disponible todavía (corre el SQL para habilitarla):', (conciliacionR.reason||conciliacionR.value?.error)?.message);
+      state.conciliacionMovimientos = [];
     }
     if(typeof mmInitAnioSelects === 'function') mmInitAnioSelects();
     if(typeof htInitAnioSelects === 'function') htInitAnioSelects();
@@ -1698,7 +2207,11 @@ async function loadAllData(){
     applyRoleUI();
     document.getElementById('loadingScreen').style.display = 'none';
     document.getElementById('appRoot').style.display = 'flex';
-    renderAll();
+    if(state.miPerfil.rol === 'cliente'){
+      setTab('comprobantes'); // ya llama a renderAll() internamente
+    } else {
+      renderAll();
+    }
   }catch(err){
     document.getElementById('loadingScreen').style.display = 'none';
     showToast('Error cargando datos: ' + (err.message||err), true);
@@ -1840,9 +2353,12 @@ function setTab(tab){
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id==='view-'+tab));
   const titles = {
     dashboard:['Dashboard','Resumen general de tu estudio'],
+    comprobantes:['Mis Comprobantes','Sube tus facturas de compra y revisa tus comprobantes de venta'],
+    misimpuestos:['Mis Impuestos','Situación de tus impuestos y honorarios con el estudio (solo lectura)'],
     agenda:['Agenda','Tu calendario y pendientes del día a día'],
     clientes:['Clientes','Tu cartera de clientes'],
     impuestos:['Impuestos','IGV, Renta 3ra y Renta 4ta por cliente'],
+    ventas:['Ventas','Comprobantes de venta y detracciones de tus clientes'],
     multas:['Multas SUNAT','Calculadora de multas con gradualidad e interés'],
     honorarios:['Honorarios','Control de cobranza de tus honorarios'],
     cronograma:['Cronograma SUNAT','Fechas de vencimiento por último dígito de RUC'],
@@ -1882,6 +2398,16 @@ function renderDashboard(){
   }).length;
   const periodoCrit = periodoCritico();
   const sinRegistrar = clientesSinRegistro(periodoCrit);
+
+  // Incluye 'parcial_*' además de 'pendiente_*' — un pago parcial no debe
+  // desaparecer de estos totales, y se suma el SALDO real (no el bruto), para
+  // no sobrestimar lo que falta cuando ya hubo un abono.
+  const ventasPorCobrar = state.comprobantesVenta.filter(v=>v.estado!=='cobrado');
+  const comprasPorPagar = state.comprobantesCompra.filter(c=>c.estado!=='sustentado');
+  // Nunca se mezcla PEN con USD: cada total es por moneda, mostrado en líneas separadas.
+  const totalPorCobrarPorMoneda = agruparSaldoPorMoneda(ventasPorCobrar, 'venta');
+  const totalPorPagarPorMoneda = agruparSaldoPorMoneda(comprasPorPagar, 'compra');
+  const totalDetraccionesPorMoneda = agruparCampoPorMoneda(ventasPorCobrar, 'detraccionMonto');
 
   const bannerHost = document.getElementById('dashboardBanner');
   let bannerHtml = '';
@@ -1956,6 +2482,21 @@ function renderDashboard(){
       <div class="stat-value">${vencidos}</div>
       <div class="stat-foot">entre impuestos y honorarios</div>
     </div>
+    <div class="stat-card c-teal">
+      <div class="stat-label">Por cobrar a clientes</div>
+      <div class="stat-value" style="font-size:17px; line-height:1.4;">${fmtMoneyPorMoneda(totalPorCobrarPorMoneda)}</div>
+      <div class="stat-foot">${ventasPorCobrar.length} venta(s) pendiente(s) de cobro</div>
+    </div>
+    <div class="stat-card c-violet">
+      <div class="stat-label">Por pagar (compras)</div>
+      <div class="stat-value" style="font-size:17px; line-height:1.4;">${fmtMoneyPorMoneda(totalPorPagarPorMoneda)}</div>
+      <div class="stat-foot">${comprasPorPagar.length} compra(s) sin sustento</div>
+    </div>
+    <div class="stat-card c-warning">
+      <div class="stat-label">Detracciones pendientes</div>
+      <div class="stat-value" style="font-size:17px; line-height:1.4;">${fmtMoneyPorMoneda(totalDetraccionesPorMoneda)}</div>
+      <div class="stat-foot">de ventas no cobradas</div>
+    </div>
   `;
 
   function ordenarPendientes(items){
@@ -2019,6 +2560,841 @@ function renderDashboard(){
         </tr>`;
       }).join('');
     }
+  }
+}
+
+/* ================= MIS COMPROBANTES (rol cliente) ================= */
+function miClienteId(){
+  // Un login de rol 'cliente' siempre tiene exactamente una empresa asignada
+  // (una fila en asignaciones_clientes), así que `state.clientes` — ya filtrado
+  // por RLS — contiene solo esa fila.
+  return state.clientes[0]?.id || null;
+}
+
+async function subirArchivoComprobante(file, clienteId){
+  const ext = file.name.includes('.') ? file.name.split('.').pop() : 'bin';
+  const path = `${clienteId}/${crypto.randomUUID()}.${ext}`;
+  const {error} = await sb.storage.from('comprobantes').upload(path, file, {upsert:false});
+  if(error) throw error;
+  return path;
+}
+
+async function verArchivoComprobante(path){
+  const {data, error} = await sb.storage.from('comprobantes').createSignedUrl(path, 120);
+  if(error){ showToast('No se pudo abrir el archivo: ' + error.message, true); return; }
+  window.open(data.signedUrl, '_blank');
+}
+
+function fileToBase64(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>resolve(reader.result.split(',')[1]);
+    reader.onerror = ()=>reject(new Error('No se pudo leer el archivo'));
+    reader.readAsDataURL(file);
+  });
+}
+
+// Lee un comprobante (imagen o PDF) con el Worker de OCR (Gemini) y devuelve
+// { ruc, razon_social, fecha_emision, tipo_comprobante, numero_comprobante,
+//   monto_total, monto_igv }. No distingue compra/venta: extrae los datos del
+// emisor del documento tal cual aparecen; cada formulario decide dónde van.
+async function leerComprobanteConIA(file){
+  const {data:{session}} = await sb.auth.getSession();
+  if(!session) throw new Error('Sesión no válida');
+  const base64 = await fileToBase64(file);
+  const resp = await fetch(OCR_WORKER_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`
+    },
+    body: JSON.stringify({ mimeType: file.type, data: base64 })
+  });
+  const json = await resp.json();
+  if(!resp.ok || !json.ok) throw new Error(json.error || 'No se pudo leer el comprobante');
+  return json.data;
+}
+
+// Igual que leerComprobanteConIA pero contra la ruta /estado-cuenta del
+// mismo Worker: devuelve { periodo_inicio, periodo_fin, movimientos:[...] }.
+async function leerEstadoCuentaConIA(file){
+  const {data:{session}} = await sb.auth.getSession();
+  if(!session) throw new Error('Sesión no válida');
+  const base64 = await fileToBase64(file);
+  const resp = await fetch(OCR_WORKER_URL + '/estado-cuenta', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`
+    },
+    body: JSON.stringify({ mimeType: file.type, data: base64 })
+  });
+  const json = await resp.json();
+  if(!resp.ok || !json.ok) throw new Error(json.error || 'No se pudo leer el estado de cuenta');
+  return json.data;
+}
+
+let misComprobantesPeriodo = periodoActualComprobantes();
+let misComprobantesTodos = false;
+
+function misComprobantesNavPeriodo(delta){
+  if(misComprobantesTodos) return;
+  misComprobantesPeriodo = sumarMesesPeriodo(misComprobantesPeriodo, delta);
+  renderComprobantes();
+}
+function misComprobantesToggleTodos(){
+  misComprobantesTodos = !misComprobantesTodos;
+  renderComprobantes();
+}
+
+function exportarMisComprobantesExcel(){
+  const cliente = state.clientes.find(x=>x.id===miClienteId());
+  const compras = filtrarPorPeriodo(state.comprobantesCompra, misComprobantesPeriodo, misComprobantesTodos);
+  const ventas = filtrarPorPeriodo(state.comprobantesVenta, misComprobantesPeriodo, misComprobantesTodos);
+  exportarComprobantesExcel(cliente?.nombre || 'mis-comprobantes', compras, ventas, periodoParaArchivo(misComprobantesPeriodo, misComprobantesTodos));
+}
+async function exportarMisComprobantesZip(){
+  const cliente = state.clientes.find(x=>x.id===miClienteId());
+  const compras = filtrarPorPeriodo(state.comprobantesCompra, misComprobantesPeriodo, misComprobantesTodos);
+  const ventas = filtrarPorPeriodo(state.comprobantesVenta, misComprobantesPeriodo, misComprobantesTodos);
+  await exportarComprobantesZip(cliente?.nombre || 'mis-comprobantes', compras, ventas, state.pagos, periodoParaArchivo(misComprobantesPeriodo, misComprobantesTodos));
+}
+
+function renderComprobantes(){
+  const tbodyCompra = document.getElementById('tblComprobantesCompra');
+  const tbodyVenta = document.getElementById('tblComprobantesVenta');
+  if(!tbodyCompra || !tbodyVenta) return;
+
+  // Mini KPIs — mismo cálculo que el dashboard del staff (saldo real, incluye
+  // parcial_*), pero state.comprobantesCompra/Venta ya vienen acotados a este
+  // cliente por RLS, así que no hace falta filtrar por cliente_id a mano.
+  const kpisEl = document.getElementById('misComprobantesKpis');
+  if(kpisEl){
+    const misVentasPorCobrar = state.comprobantesVenta.filter(v=>v.estado!=='cobrado');
+    const misComprasPorPagar = state.comprobantesCompra.filter(c=>c.estado!=='sustentado');
+    // Nunca se mezcla PEN con USD: cada total es por moneda.
+    const miPorCobrarPorMoneda = agruparSaldoPorMoneda(misVentasPorCobrar, 'venta');
+    const miPorPagarPorMoneda = agruparSaldoPorMoneda(misComprasPorPagar, 'compra');
+    const miDetraccionPorMoneda = agruparCampoPorMoneda(misVentasPorCobrar, 'detraccionMonto');
+    kpisEl.innerHTML = `
+      <div class="stat-card c-teal">
+        <div class="stat-label">Por cobrar</div>
+        <div class="stat-value" style="font-size:17px; line-height:1.4;">${fmtMoneyPorMoneda(miPorCobrarPorMoneda)}</div>
+        <div class="stat-foot">${misVentasPorCobrar.length} venta(s) pendiente(s)</div>
+      </div>
+      <div class="stat-card c-violet">
+        <div class="stat-label">Por pagar</div>
+        <div class="stat-value" style="font-size:17px; line-height:1.4;">${fmtMoneyPorMoneda(miPorPagarPorMoneda)}</div>
+        <div class="stat-foot">${misComprasPorPagar.length} compra(s) sin sustentar</div>
+      </div>
+      <div class="stat-card c-warning">
+        <div class="stat-label">Detracciones pendientes</div>
+        <div class="stat-value" style="font-size:17px; line-height:1.4;">${fmtMoneyPorMoneda(miDetraccionPorMoneda)}</div>
+        <div class="stat-foot">de ventas no cobradas</div>
+      </div>
+    `;
+  }
+
+  const toolbarEl = document.getElementById('comprobantesPeriodoToolbar');
+  if(toolbarEl) toolbarEl.innerHTML = periodoToolbarHtml('misComprobantesNavPeriodo', 'misComprobantesToggleTodos', misComprobantesPeriodo, misComprobantesTodos, 'exportarMisComprobantesExcel', 'exportarMisComprobantesZip');
+
+  const misCompras = filtrarPorPeriodo(state.comprobantesCompra, misComprobantesPeriodo, misComprobantesTodos)
+    .slice().sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+  tbodyCompra.innerHTML = misCompras.length===0
+    ? `<tr class="empty-row"><td colspan="6">${state.comprobantesCompra.length===0 ? 'Todavía no has subido ninguna factura de compra.' : 'No hay facturas de compra en este período.'}</td></tr>`
+    : misCompras.map(c=>{
+        const badge = estadoComprobanteBadge('compra', c);
+        const yaCompleto = c.estado === 'sustentado';
+        const puedeEditar = c.estado === 'pendiente_sustento';
+        const pagoLigado = state.pagos.find(p=>p.comprobanteCompraId===c.id);
+        return `<tr>
+          <td class="cell-muted">${c.fechaEmision ? fmtFecha(c.fechaEmision) : '—'}</td>
+          <td class="cell-strong">${escapeHtml(c.razonSocialProveedor)||'—'}<div class="cell-muted">${escapeHtml(c.rucProveedor)||''}</div>${c.concepto ? `<div class="cell-muted" style="font-style:italic;">${escapeHtml(c.concepto)}</div>` : ''}</td>
+          <td>${c.tipoComprobante ? `<span class="pill pill-otro">${escapeHtml(c.tipoComprobante)}</span>` : '—'}</td>
+          <td class="num">${montoCompraHtml(c)}</td>
+          <td>${badge}</td>
+          <td class="row-actions">
+            <button class="btn-ghost btn-sm" onclick="verArchivoComprobante('${c.archivoUrl}')">Ver</button>
+            ${puedeEditar ? `<button class="btn-ghost btn-sm" onclick="editarCompraClick('${c.id}')">Editar</button>` : ''}
+            ${!yaCompleto ? `<button class="btn btn-teal btn-sm" onclick="openPagoModal('compra','${c.id}')">+ Sustento</button>` : ''}
+            ${puedeEditar ? `<button class="btn-danger-ghost btn-sm" onclick="eliminarCompraPropia('${c.id}')">Eliminar</button>` : ''}
+            ${pagoLigado && pagoLigado.archivoUrl ? `<button class="btn-ghost btn-sm" onclick="verArchivoComprobante('${pagoLigado.archivoUrl}')">Ver sustento</button>` : ''}
+          </td>
+        </tr>${pagosExpandedRowHtml('compra', c.id, 6, ()=>false)}`;
+      }).join('');
+
+  const misVentas = filtrarPorPeriodo(state.comprobantesVenta, misComprobantesPeriodo, misComprobantesTodos)
+    .slice().sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+  tbodyVenta.innerHTML = misVentas.length===0
+    ? `<tr class="empty-row"><td colspan="7">${state.comprobantesVenta.length===0 ? 'Todavía no tienes comprobantes de venta registrados.' : 'No hay comprobantes de venta en este período.'}</td></tr>`
+    : misVentas.map(v=>{
+        const badge = estadoComprobanteBadge('venta', v);
+        const yaCompleto = v.estado === 'cobrado';
+        const pagoPropio = state.pagos.find(p=>p.comprobanteVentaId===v.id && p.subidoPor===currentUser?.id);
+        return `<tr>
+          <td class="cell-muted">${v.fechaEmision ? fmtFecha(v.fechaEmision) : '—'}</td>
+          <td class="cell-strong">${escapeHtml(v.razonSocialClienteFinal)||'—'}<div class="cell-muted">${escapeHtml(v.rucClienteFinal)||''}</div>${v.concepto ? `<div class="cell-muted" style="font-style:italic;">${escapeHtml(v.concepto)}</div>` : ''}</td>
+          <td class="num">${v.montoTotal!=null ? fmtMoney(v.montoTotal, v.moneda) : '—'}</td>
+          <td class="num">${detraccionVentaHtml(v)}</td>
+          <td class="num">${v.netoCobrar!=null ? fmtMoney(v.netoCobrar, v.moneda) : '—'}</td>
+          <td>${badge}</td>
+          <td class="row-actions">
+            <button class="btn-ghost btn-sm" onclick="verArchivoComprobante('${v.archivoUrl}')">Ver</button>
+            ${!yaCompleto ? `<button class="btn btn-teal btn-sm" onclick="openPagoModal('venta','${v.id}')">+ Voucher de cobro</button>` : ''}
+            ${pagoPropio && pagoPropio.archivoUrl ? `<button class="btn-ghost btn-sm" onclick="verArchivoComprobante('${pagoPropio.archivoUrl}')">Ver voucher</button>` : ''}
+            ${pagoPropio ? `<button class="btn-danger-ghost btn-sm" onclick="eliminarPagoIndividual('venta','${v.id}','${pagoPropio.id}')">Eliminar voucher</button>` : ''}
+          </td>
+        </tr>${pagosExpandedRowHtml('venta', v.id, 7, p=>p.subidoPor===currentUser?.id)}`;
+      }).join('');
+
+  const conciliacionEl = document.getElementById('misConciliacionPanel');
+  if(conciliacionEl) conciliacionEl.innerHTML = misConciliacionHtml();
+}
+
+async function eliminarCompraPropia(id){
+  if(!confirm('¿Eliminar esta factura de compra? Esta acción no se puede deshacer.')) return;
+  try{
+    const {error} = await sb.from('comprobantes_compra').delete().eq('id', id);
+    if(error) throw error;
+    state.comprobantesCompra = state.comprobantesCompra.filter(x=>x.id!==id);
+    renderAll();
+    showToast('Factura eliminada');
+  }catch(err){
+    showToast('Error eliminando: ' + err.message, true);
+  }
+}
+
+// Eliminar el voucher propio del cliente se resuelve con la misma función
+// genérica eliminarPagoIndividual('venta', ...) — antes tenía su propia
+// versión (eliminarPagoPropio) que hardcodeaba el comprobante de vuelta a
+// 'pendiente_cobro' sin considerar que podían quedar otros pagos parciales
+// vinculados; mismo bug que reportaste para "Revertir", ya corregido acá.
+
+function openComprobanteCompraModal(compraExistente, clienteIdParaCrear){
+  // Cualquier apertura "normal" de este modal invalida un vínculo pendiente
+  // de un flujo anterior de conciliación que se haya quedado a medias (ej. el
+  // usuario canceló) — solo fichaConciliacionCrearComprobante lo vuelve a
+  // fijar, y lo hace DESPUÉS de llamar a esta función.
+  conciliacionVinculoPendiente = null;
+  const c = compraExistente || null;
+  const esEdicion = !!c;
+  const body = `
+    ${!esEdicion && clienteIdParaCrear ? `<input type="hidden" id="mCompraClienteIdOverride" value="${escapeHtml(clienteIdParaCrear)}">` : ''}
+    <div class="form-group">
+      <label>Archivo (foto o PDF de la factura)${esEdicion ? ' — deja vacío para no cambiarlo' : ''}</label>
+      <input type="file" id="mCompraArchivo" accept="image/*,.pdf" onchange="autocompletarCompraConIA(${esEdicion?`'${c.id}'`:'null'})">
+      <span class="form-hint" id="mCompraEstadoIA"></span>
+    </div>
+    <div class="alert-banner danger" id="mCompraAvisoRuc" style="display:none; margin-top:2px; margin-bottom:14px;">
+      <span class="ico">⚠️</span>
+      <div>
+        Este documento parece estar emitido a nombre de otro RUC — verifica que sea el comprobante correcto.
+        <div class="sub" style="margin-top:8px; font-weight:600;">
+          <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer;">
+            <input type="checkbox" id="mCompraConfirmarRuc" onchange="onCambioConfirmarRucCompra()" style="margin-top:3px;">
+            <span>Confirmo que este comprobante corresponde a esta empresa (ej. grupo empresarial)</span>
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Tipo de comprobante</label>
+        <select id="mCompraTipo">${opcionesTipoComprobante(c?.tipoComprobante || 'Factura')}</select>
+      </div>
+      <div class="form-group"><label>N° de comprobante</label><input type="text" id="mCompraNumero" value="${c?escapeHtml(c.numeroComprobante)||'':''}" placeholder="F001-123"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>RUC del proveedor</label><input type="text" id="mCompraRuc" value="${c?escapeHtml(c.rucProveedor)||'':''}" placeholder="20123456789"></div>
+      <div class="form-group"><label>Razón social del proveedor</label><input type="text" id="mCompraRazonSocial" value="${c?escapeHtml(c.razonSocialProveedor)||'':''}" placeholder="Opcional"></div>
+    </div>
+    <div class="form-group"><label>Concepto</label><input type="text" id="mCompraConcepto" value="${c?escapeHtml(c.concepto)||'':''}" placeholder="Descripción del servicio o producto facturado"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Fecha de emisión</label><input type="date" id="mCompraFecha" value="${c?.fechaEmision||''}"></div>
+      <div class="form-group"><label>Moneda</label>
+        <select id="mCompraMoneda" onchange="compraRecalcular()">
+          <option value="PEN" ${(c?.moneda||'PEN')==='PEN'?'selected':''}>Soles (S/)</option>
+          <option value="USD" ${c?.moneda==='USD'?'selected':''}>Dólares (US$)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Monto total</label><input type="number" id="mCompraMonto" step="0.01" value="${c?.montoTotal ?? ''}" oninput="compraRecalcular()"></div>
+      <div class="form-group"><label>IGV</label><input type="number" id="mCompraIgv" step="0.01" value="${c?.montoIgv ?? ''}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Retención (monto)</label>
+        <input type="number" id="mCompraRetencionMonto" step="0.01" value="${c?.montoRetencion ?? ''}" oninput="compraRecalcular()">
+        <span class="form-hint">Ej. 8% de renta de 4ta si el proveedor emite recibo por honorarios.</span>
+      </div>
+      <div class="form-group">
+        <label>% Retención <span class="cell-muted" style="font-weight:400; text-transform:none;">(informativo)</span></label>
+        <input type="number" id="mCompraRetencionPct" step="0.01" value="${c?.porcentajeRetencion ?? ''}">
+      </div>
+    </div>
+    <div class="ficha-grid" style="margin-top:2px; margin-bottom:14px;">
+      <div class="ficha-item"><b>Neto a pagar</b><span id="mCompraNeto">S/ 0.00</span></div>
+    </div>
+    <div class="form-hint">${esEdicion ? 'Corrige los campos que hagan falta.' : 'Al elegir el archivo se intenta completar estos campos automáticamente — revísalos antes de subir.'}</div>
+  `;
+  const foot = `
+    <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+    <button class="btn btn-primary" id="btnGuardarCompra" onclick="guardarComprobanteCompra(${esEdicion?`'${c.id}'`:'null'})">${esEdicion?'Guardar cambios':'Subir'}</button>
+  `;
+  openModal(esEdicion ? 'Editar comprobante de compra' : 'Subir factura de compra', body, foot);
+  compraRecalcular();
+}
+function compraRecalcular(){
+  const monto = Number(document.getElementById('mCompraMonto')?.value)||0;
+  const retencion = Number(document.getElementById('mCompraRetencionMonto')?.value)||0;
+  const neto = Math.round((monto - retencion)*100)/100;
+  const el = document.getElementById('mCompraNeto');
+  if(el) el.textContent = fmtMoney(neto, document.getElementById('mCompraMoneda')?.value);
+}
+
+function editarCompraClick(id){
+  const c = state.comprobantesCompra.find(x=>x.id===id);
+  if(!c) return;
+  openComprobanteCompraModal(c);
+}
+
+// Tipos de comprobante que normalmente imprimen el RUC de quien los recibe —
+// solo en estos vale la pena comparar contra el RUC del cliente al que se le
+// está subiendo. Boleta/Otro no llevan ese dato, así que quedan libres.
+const TIPOS_COMPROBANTE = [
+  'Factura', 'Boleta', 'Recibo por honorarios', 'Nota de crédito', 'Nota de débito',
+  'Recibo por Arrendamiento', 'Ticket/Boleta de máquina registradora', 'Recibo por Servicios Públicos',
+  'Guía de Remisión', 'Comprobante de Retención', 'Comprobante de Percepción', 'Otro'
+];
+function opcionesTipoComprobante(seleccionado){
+  return TIPOS_COMPROBANTE.map(t=>`<option value="${t}" ${t===seleccionado?'selected':''}>${t}</option>`).join('');
+}
+const TIPOS_CON_RUC_RECEPTOR = [
+  'Factura', 'Recibo por honorarios', 'Nota de crédito', 'Nota de débito',
+  'Recibo por Arrendamiento', 'Recibo por Servicios Públicos', 'Guía de Remisión',
+  'Comprobante de Retención', 'Comprobante de Percepción'
+]; // Ticket/Boleta de máquina registradora queda fuera, como Boleta — normalmente no lleva RUC del receptor impreso.
+
+function soloDigitos(s){ return (s||'').replace(/\D/g, ''); }
+
+function mostrarAvisoRucCompra(){
+  const aviso = document.getElementById('mCompraAvisoRuc');
+  const chk = document.getElementById('mCompraConfirmarRuc');
+  const btn = document.getElementById('btnGuardarCompra');
+  if(aviso) aviso.style.display = '';
+  if(chk) chk.checked = false;
+  if(btn) btn.disabled = true;
+}
+function ocultarAvisoRucCompra(){
+  const aviso = document.getElementById('mCompraAvisoRuc');
+  const btn = document.getElementById('btnGuardarCompra');
+  if(aviso) aviso.style.display = 'none';
+  if(btn) btn.disabled = false;
+}
+function onCambioConfirmarRucCompra(){
+  const chk = document.getElementById('mCompraConfirmarRuc');
+  const btn = document.getElementById('btnGuardarCompra');
+  if(btn) btn.disabled = !chk.checked;
+}
+
+async function autocompletarCompraConIA(idParaEditar){
+  const file = document.getElementById('mCompraArchivo').files[0];
+  const estadoEl = document.getElementById('mCompraEstadoIA');
+  if(!file) return;
+  if(estadoEl) estadoEl.textContent = 'Leyendo con IA...';
+  ocultarAvisoRucCompra();
+  try{
+    const datos = await leerComprobanteConIA(file);
+    if(datos.ruc) document.getElementById('mCompraRuc').value = datos.ruc;
+    if(datos.razon_social) document.getElementById('mCompraRazonSocial').value = datos.razon_social;
+    if(datos.fecha_emision) document.getElementById('mCompraFecha').value = datos.fecha_emision;
+    if(datos.tipo_comprobante) document.getElementById('mCompraTipo').value = datos.tipo_comprobante;
+    if(datos.numero_comprobante) document.getElementById('mCompraNumero').value = datos.numero_comprobante;
+    if(datos.concepto) document.getElementById('mCompraConcepto').value = datos.concepto;
+    if(datos.moneda && ['PEN','USD'].includes(datos.moneda)) document.getElementById('mCompraMoneda').value = datos.moneda;
+    if(datos.monto_total) document.getElementById('mCompraMonto').value = datos.monto_total;
+    if(datos.monto_igv) document.getElementById('mCompraIgv').value = datos.monto_igv;
+    if(datos.monto_retencion) document.getElementById('mCompraRetencionMonto').value = datos.monto_retencion;
+    if(datos.porcentaje_retencion) document.getElementById('mCompraRetencionPct').value = datos.porcentaje_retencion;
+    compraRecalcular();
+
+    // Si el tipo lleva RUC del receptor y la IA logró leerlo, lo comparamos
+    // contra el RUC del cliente dueño de este comprobante. Si no coincide,
+    // no bloqueamos silenciosamente: exigimos una confirmación explícita.
+    // Si la IA no pudo leer el RUC receptor, o el cliente no tiene RUC
+    // guardado, simplemente no se valida — no es un bloqueo por defecto.
+    const clienteId = idParaEditar
+      ? state.comprobantesCompra.find(x=>x.id===idParaEditar)?.clienteId
+      : miClienteId();
+    const cliente = state.clientes.find(x=>x.id===clienteId);
+    if(datos.ruc_receptor && cliente?.ruc && TIPOS_CON_RUC_RECEPTOR.includes(datos.tipo_comprobante)
+       && soloDigitos(datos.ruc_receptor) !== soloDigitos(cliente.ruc)){
+      mostrarAvisoRucCompra();
+    }
+
+    if(estadoEl) estadoEl.textContent = '✓ Datos leídos automáticamente — revísalos antes de subir.';
+  }catch(err){
+    if(estadoEl) estadoEl.textContent = 'No se pudo leer automáticamente (' + err.message + ') — completa los campos a mano.';
+  }
+}
+
+async function guardarComprobanteCompra(idParaEditar){
+  const file = document.getElementById('mCompraArchivo').files[0];
+  if(!idParaEditar && !file){ showToast('Selecciona un archivo', true); return; }
+  const clienteId = idParaEditar
+    ? state.comprobantesCompra.find(x=>x.id===idParaEditar)?.clienteId
+    : (document.getElementById('mCompraClienteIdOverride')?.value || miClienteId());
+  if(!clienteId){ showToast('No se encontró la empresa asociada.', true); return; }
+  const btn = document.getElementById('btnGuardarCompra');
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+  try{
+    let archivoUrl;
+    if(file) archivoUrl = await subirArchivoComprobante(file, clienteId);
+    const montoTxt = document.getElementById('mCompraMonto').value;
+    const igvTxt = document.getElementById('mCompraIgv').value;
+    const retencionTxt = document.getElementById('mCompraRetencionMonto').value;
+    const retencionPctTxt = document.getElementById('mCompraRetencionPct').value;
+    const payload = {
+      tipo_comprobante: document.getElementById('mCompraTipo').value,
+      numero_comprobante: document.getElementById('mCompraNumero').value.trim() || null,
+      concepto: document.getElementById('mCompraConcepto').value.trim() || null,
+      fecha_emision: document.getElementById('mCompraFecha').value || null,
+      ruc_proveedor: document.getElementById('mCompraRuc').value.trim() || null,
+      razon_social_proveedor: document.getElementById('mCompraRazonSocial').value.trim() || null,
+      moneda: document.getElementById('mCompraMoneda').value,
+      monto_total: montoTxt ? Number(montoTxt) : null,
+      monto_igv: igvTxt ? Number(igvTxt) : null,
+      monto_retencion: retencionTxt ? Number(retencionTxt) : null,
+      porcentaje_retencion: retencionPctTxt ? Number(retencionPctTxt) : null
+    };
+    if(!idParaEditar) payload.cliente_id = clienteId;
+    if(archivoUrl) payload.archivo_url = archivoUrl;
+
+    let data, error;
+    if(idParaEditar){
+      ({data, error} = await sb.from('comprobantes_compra').update(payload).eq('id', idParaEditar).select().single());
+    } else {
+      ({data, error} = await sb.from('comprobantes_compra').insert(payload).select().single());
+    }
+    if(error) throw error;
+
+    // Se lee y se consume ANTES de cerrar el modal — así el flag nunca
+    // sobrevive a un segundo guardado posterior, tenga éxito o no este vínculo.
+    const vinculoInfo = (!idParaEditar && conciliacionVinculoPendiente && conciliacionVinculoPendiente.tipo==='compra')
+      ? conciliacionVinculoPendiente : null;
+    conciliacionVinculoPendiente = null;
+
+    if(idParaEditar){
+      const idx = state.comprobantesCompra.findIndex(x=>x.id===idParaEditar);
+      if(idx>=0) state.comprobantesCompra[idx] = mapComprobanteCompraFromDb(data);
+    } else {
+      state.comprobantesCompra.unshift(mapComprobanteCompraFromDb(data));
+    }
+    closeModal();
+    renderAll();
+
+    let mensajeExtra = '';
+    if(vinculoInfo){
+      const nuevo = state.comprobantesCompra[0];
+      const mov = state.conciliacionMovimientos.find(m=>m.id===vinculoInfo.movimientoId);
+      try{
+        await crearPagoVinculadoAMovimiento('compra', nuevo.id, totalComparableComprobante('compra', nuevo), mov?.fecha, vinculoInfo.movimientoId);
+        mensajeExtra = ' y vinculado al movimiento bancario';
+      }catch(errVinculo){
+        showToast('El comprobante se creó, pero no se pudo vincular el pago automáticamente: ' + errVinculo.message, true);
+      }
+      refrescarFichaClientePaneles();
+    }
+    showToast(idParaEditar ? 'Comprobante actualizado' : ('Factura subida' + mensajeExtra));
+  }catch(err){
+    showToast('Error guardando: ' + err.message, true);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = idParaEditar ? 'Guardar cambios' : 'Subir';
+  }
+}
+
+function openPagoModal(tipo, comprobanteId){
+  const esCompra = tipo === 'compra';
+  // Solo el cliente está obligado a adjuntar su voucher/sustento — super_admin
+  // y usuario pueden marcar el comprobante como sustentado/cobrado "a mano"
+  // (ej. al conciliar el banco), con o sin archivo.
+  const esStaff = state.miPerfil?.rol !== 'cliente';
+  const x = esCompra
+    ? state.comprobantesCompra.find(c=>c.id===comprobanteId)
+    : state.comprobantesVenta.find(v=>v.id===comprobanteId);
+  const saldoActual = x ? saldoComprobante(tipo, x) : 0;
+  const body = `
+    <div class="form-group">
+      <label>Archivo (voucher / captura de banco)${esStaff ? ' — opcional' : ''}</label>
+      <input type="file" id="mPagoArchivo" accept="image/*,.pdf">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Monto (${x?.moneda==='USD'?'US$':'S/'})</label>
+        <input type="number" id="mPagoMonto" step="0.01" value="${saldoActual>0?saldoActual.toFixed(2):''}">
+        <span class="form-hint">Saldo pendiente: ${fmtMoney(saldoActual, x?.moneda)}. Puedes bajarlo para registrar un abono parcial.</span>
+      </div>
+      <div class="form-group"><label>Fecha de pago</label><input type="date" id="mPagoFecha" value="${todayStr()}"></div>
+    </div>
+    <div class="form-group"><label>Método</label>
+      <select id="mPagoMetodo">
+        <option value="Transferencia">Transferencia</option>
+        <option value="Detracción">Detracción</option>
+        <option value="Efectivo">Efectivo</option>
+        <option value="Otro">Otro</option>
+      </select>
+    </div>
+    ${esStaff ? `<div class="form-hint">Si no adjuntas archivo, el pago igual queda registrado — útil cuando conciliaste el banco directamente. Si el monto es menor al saldo, queda "Parcial".</div>` : ''}
+  `;
+  const foot = `
+    <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+    <button class="btn btn-primary" id="btnGuardarPago" onclick="guardarPago('${tipo}','${comprobanteId}')">${esStaff ? 'Registrar pago' : 'Subir'}</button>
+  `;
+  const titulo = esCompra
+    ? (esStaff ? 'Registrar sustento de compra' : 'Adjuntar sustento de pago')
+    : (esStaff ? 'Registrar cobro de venta' : 'Subir voucher de cobro');
+  openModal(titulo, body, foot);
+}
+
+async function guardarPago(tipo, comprobanteId){
+  const file = document.getElementById('mPagoArchivo').files[0];
+  const esStaff = state.miPerfil?.rol !== 'cliente';
+  if(!file && !esStaff){ showToast('Selecciona un archivo', true); return; }
+  const montoTxt = document.getElementById('mPagoMonto').value;
+  const monto = montoTxt ? Number(montoTxt) : 0;
+  if(!monto || monto<=0){ showToast('Ingresa el monto del pago', true); return; }
+  // El clienteId (para saber en qué carpeta del bucket subir) sale del propio
+  // comprobante, no de miClienteId() — miClienteId() solo tiene sentido para
+  // el rol cliente (una sola empresa asignada); el staff maneja varias.
+  const clienteId = tipo==='compra'
+    ? state.comprobantesCompra.find(x=>x.id===comprobanteId)?.clienteId
+    : state.comprobantesVenta.find(x=>x.id===comprobanteId)?.clienteId;
+  if(!clienteId){ showToast('No se encontró la empresa asociada.', true); return; }
+  const btn = document.getElementById('btnGuardarPago');
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+  try{
+    const archivoUrl = file ? await subirArchivoComprobante(file, clienteId) : null;
+    const payload = {
+      archivo_url: archivoUrl,
+      monto: monto,
+      fecha_pago: document.getElementById('mPagoFecha').value || null,
+      metodo: document.getElementById('mPagoMetodo').value,
+      comprobante_compra_id: tipo==='compra' ? comprobanteId : null,
+      comprobante_venta_id: tipo==='venta' ? comprobanteId : null
+    };
+    const {data, error} = await sb.from('pagos').insert(payload).select().single();
+    if(error) throw error;
+    state.pagos.unshift(mapPagoFromDb(data));
+    // El trigger `pagos_actualiza_estado` ya sumó todos los pagos y decidió el
+    // estado en la base de datos; recalculamos igual localmente para no
+    // esperar un recargo (misma lógica que usa el trigger).
+    recalcularEstadoLocalComprobante(tipo, comprobanteId);
+    closeModal();
+    renderAll();
+    refrescarFichaClientePaneles();
+    showToast('Listo, se registró el pago');
+  }catch(err){
+    showToast('Error guardando el pago: ' + err.message, true);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = esStaff ? 'Registrar pago' : 'Subir';
+  }
+}
+
+// Revierte TODOS los pagos de un comprobante de una sola vez (a diferencia de
+// eliminarPagoIndividual, que borra uno solo). El trigger pagos_actualiza_estado
+// se encarga de bajar el estado. Solo super_admin/usuario ven este botón; RLS
+// ya los deja borrar cualquier pago (compra o venta) sin importar quién lo subió.
+async function revertirEstadoComprobante(tipo, comprobanteId){
+  const esCompra = tipo === 'compra';
+  const estadoPendienteTxt = esCompra ? '"Pendiente de sustento"' : '"Pendiente de cobro"';
+  if(!confirm(`¿Seguro? Esto vuelve el comprobante a ${estadoPendienteTxt}.`)) return;
+  try{
+    const pagosLigados = state.pagos.filter(p=>
+      esCompra ? p.comprobanteCompraId===comprobanteId : p.comprobanteVentaId===comprobanteId
+    );
+    if(pagosLigados.length===0){ showToast('No hay ningún pago vinculado a este comprobante', true); return; }
+    for(const pago of pagosLigados){
+      const {error} = await sb.from('pagos').delete().eq('id', pago.id);
+      if(error) throw error;
+    }
+    state.pagos = state.pagos.filter(p=>!pagosLigados.some(pl=>pl.id===p.id));
+    recalcularEstadoLocalComprobante(tipo, comprobanteId);
+    renderAll();
+    refrescarFichaClientePaneles();
+    showToast('Comprobante revertido a pendiente');
+  }catch(err){
+    showToast('Error revirtiendo: ' + err.message, true);
+  }
+}
+
+/* ================= VENTAS (staff: super_admin + usuario asignado) ================= */
+// El neto a cobrar de una venta resta detracción (% -> monto derivado, mismo
+// criterio de siempre) Y retención (monto directo — a diferencia de la
+// detracción, el monto de retención casi siempre viene impreso tal cual en
+// el documento u OCR, así que no lo derivamos de un %; porcentaje_retencion
+// queda solo como dato informativo, sin afectar el cálculo).
+function calcularNetoVenta(monto, detraccionPct, retencionMonto){
+  const m = Number(monto)||0;
+  const p = Number(detraccionPct)||0;
+  const r = Number(retencionMonto)||0;
+  const detraccionMonto = Math.round(m * p / 100 * 100) / 100;
+  const netoCobrar = Math.round((m - detraccionMonto - r) * 100) / 100;
+  return {detraccionMonto, netoCobrar};
+}
+
+function ventasRecalcular(){
+  const monto = document.getElementById('mVentaMonto')?.value;
+  const pct = document.getElementById('mVentaDetraccionPct')?.value;
+  const retencionMonto = document.getElementById('mVentaRetencionMonto')?.value;
+  const {detraccionMonto, netoCobrar} = calcularNetoVenta(monto, pct, retencionMonto);
+  document.getElementById('mVentaDetraccionMonto').textContent = fmtMoney(detraccionMonto);
+  document.getElementById('mVentaNeto').textContent = fmtMoney(netoCobrar);
+}
+
+function renderVentas(){
+  const tbody = document.getElementById('tblVentas');
+  if(!tbody) return;
+
+  const selCliente = document.getElementById('fVentaCliente');
+  if(selCliente){
+    const cur = selCliente.value;
+    selCliente.innerHTML = '<option value="">Todos los clientes</option>' +
+      state.clientes.map(c=>`<option value="${c.id}">${escapeHtml(c.nombre)}</option>`).join('');
+    selCliente.value = cur;
+  }
+
+  const filtroCliente = document.getElementById('fVentaCliente')?.value || '';
+  const filtroEstado = document.getElementById('fVentaEstado')?.value || '';
+
+  let ventas = state.comprobantesVenta.slice();
+  if(filtroCliente) ventas = ventas.filter(v=>v.clienteId===filtroCliente);
+  if(filtroEstado) ventas = ventas.filter(v=>v.estado===filtroEstado);
+  ventas.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+
+  tbody.innerHTML = ventas.length===0
+    ? `<tr class="empty-row"><td colspan="8">No hay comprobantes de venta${filtroCliente||filtroEstado ? ' con ese filtro' : ''}.</td></tr>`
+    : ventas.map(v=>{
+        const badge = estadoComprobanteBadge('venta', v);
+        const yaCompleto = v.estado === 'cobrado';
+        const tienePago = v.estado !== 'pendiente_cobro';
+        return `<tr>
+          <td class="cell-strong">${escapeHtml(clienteNombre(v.clienteId))}</td>
+          <td class="cell-muted">${v.fechaEmision ? fmtFecha(v.fechaEmision) : '—'}</td>
+          <td>${escapeHtml(v.razonSocialClienteFinal)||'—'}<div class="cell-muted">${escapeHtml(v.rucClienteFinal)||''}</div>${v.concepto ? `<div class="cell-muted" style="font-style:italic;">${escapeHtml(v.concepto)}</div>` : ''}</td>
+          <td class="num">${v.montoTotal!=null ? fmtMoney(v.montoTotal, v.moneda) : '—'}</td>
+          <td class="num">${v.detraccionMonto!=null ? fmtMoney(v.detraccionMonto, v.moneda) : '—'}<div class="cell-muted">${v.detraccionPct!=null ? v.detraccionPct+'%' : ''}</div>${Number(v.montoRetencion||0)>0 ? `<div class="cell-muted" style="font-size:10.5px;">Retención: ${fmtMoney(v.montoRetencion, v.moneda)}</div>` : ''}</td>
+          <td class="num">${v.netoCobrar!=null ? fmtMoney(v.netoCobrar, v.moneda) : '—'}</td>
+          <td>${badge}</td>
+          <td class="row-actions">
+            <button class="btn-ghost btn-sm" onclick="verArchivoComprobante('${v.archivoUrl}')">Ver</button>
+            ${!yaCompleto ? `<button class="btn btn-teal btn-sm" onclick="openPagoModal('venta','${v.id}')">${tienePago?'Registrar más':'Marcar cobrado'}</button>` : ''}
+            ${tienePago ? `<button class="btn-ghost btn-sm" onclick="revertirEstadoComprobante('venta','${v.id}')">↺ Revertir</button>` : ''}
+            <button class="btn-ghost btn-sm" onclick="editarVentaClick('${v.id}')">Editar</button>
+            <button class="btn-danger-ghost btn-sm" onclick="eliminarVenta('${v.id}')">Eliminar</button>
+          </td>
+        </tr>${pagosExpandedRowHtml('venta', v.id, 8)}`;
+      }).join('');
+}
+
+function openVentaModal(clientePreseleccionado, ventaExistente){
+  // Ver misma nota en openComprobanteCompraModal: cualquier apertura normal
+  // de este modal invalida un vínculo pendiente que se haya quedado a medias.
+  conciliacionVinculoPendiente = null;
+  if(state.clientes.length===0){
+    showToast('Registra primero al menos un cliente en la sección "Clientes"', true);
+    return;
+  }
+  const v = ventaExistente || null;
+  const esEdicion = !!v;
+  const esCliente = state.miPerfil?.rol === 'cliente';
+  const opcionesClientes = state.clientes.map(c=>
+    `<option value="${c.id}" ${c.id===(v?v.clienteId:clientePreseleccionado)?'selected':''}>${escapeHtml(c.nombre)}</option>`
+  ).join('');
+  const body = `
+    <div class="form-group"><label>Cliente del estudio</label><select id="mVentaCliente" ${(esEdicion||esCliente)?'disabled':''}>${opcionesClientes}</select></div>
+    <div class="form-group">
+      <label>Archivo (factura de venta)${esEdicion ? ' — deja vacío para no cambiarlo' : ''}</label>
+      <input type="file" id="mVentaArchivo" accept="image/*,.pdf" onchange="autocompletarVentaConIA()">
+      <span class="form-hint" id="mVentaEstadoIA"></span>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Tipo de comprobante</label>
+        <select id="mVentaTipo">${opcionesTipoComprobante(v?.tipoComprobante || 'Factura')}</select>
+      </div>
+      <div class="form-group"><label>N° de comprobante</label><input type="text" id="mVentaNumero" value="${v?escapeHtml(v.numeroComprobante)||'':''}" placeholder="F001-123"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>RUC del cliente final</label><input type="text" id="mVentaRuc" value="${v?escapeHtml(v.rucClienteFinal)||'':''}" placeholder="20123456789"></div>
+      <div class="form-group"><label>Razón social del cliente final</label><input type="text" id="mVentaRazonSocial" value="${v?escapeHtml(v.razonSocialClienteFinal)||'':''}"></div>
+    </div>
+    <div class="form-group"><label>Concepto</label><input type="text" id="mVentaConcepto" value="${v?escapeHtml(v.concepto)||'':''}" placeholder="Descripción del servicio o producto facturado"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Fecha de emisión</label><input type="date" id="mVentaFecha" value="${v?.fechaEmision||''}"></div>
+      <div class="form-group"><label>Moneda</label>
+        <select id="mVentaMoneda">
+          <option value="PEN" ${(v?.moneda||'PEN')==='PEN'?'selected':''}>Soles (S/)</option>
+          <option value="USD" ${v?.moneda==='USD'?'selected':''}>Dólares (US$)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Monto total</label><input type="number" id="mVentaMonto" step="0.01" value="${v?.montoTotal ?? ''}" oninput="ventasRecalcular()"></div>
+    <div class="form-group">
+      <label>% Detracción</label>
+      <input type="number" id="mVentaDetraccionPct" step="0.01" value="${v?.detraccionPct ?? 12}" oninput="ventasRecalcular()">
+      <span class="form-hint">Tasas comunes (Anexo 3 SUNAT): 4%, 10%, 12%. Ajústala según corresponda.</span>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Retención (monto)</label>
+        <input type="number" id="mVentaRetencionMonto" step="0.01" value="${v?.montoRetencion ?? ''}" oninput="ventasRecalcular()">
+        <span class="form-hint">Si el pagador retiene renta (ej. 4ta categoría), el monto retenido.</span>
+      </div>
+      <div class="form-group">
+        <label>% Retención <span class="cell-muted" style="font-weight:400; text-transform:none;">(informativo)</span></label>
+        <input type="number" id="mVentaRetencionPct" step="0.01" value="${v?.porcentajeRetencion ?? ''}">
+        <span class="form-hint">Solo referencia — el monto de arriba es lo que se resta del neto.</span>
+      </div>
+    </div>
+    <div class="ficha-grid" style="margin-top:6px;">
+      <div class="ficha-item"><b>Detracción</b><span id="mVentaDetraccionMonto">S/ 0.00</span></div>
+      <div class="ficha-item"><b>Neto a cobrar</b><span id="mVentaNeto">S/ 0.00</span></div>
+    </div>
+  `;
+  const foot = `
+    <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+    <button class="btn btn-primary" id="btnGuardarVenta" onclick="guardarVenta(${esEdicion?`'${v.id}'`:'null'})">${esEdicion?'Guardar cambios':'Guardar'}</button>
+  `;
+  openModal(esEdicion ? 'Editar comprobante de venta' : 'Nuevo comprobante de venta', body, foot);
+  ventasRecalcular();
+}
+
+function editarVentaClick(id){
+  const v = state.comprobantesVenta.find(x=>x.id===id);
+  if(!v) return;
+  openVentaModal(v.clienteId, v);
+}
+
+async function autocompletarVentaConIA(){
+  const file = document.getElementById('mVentaArchivo').files[0];
+  const estadoEl = document.getElementById('mVentaEstadoIA');
+  if(!file) return;
+  if(estadoEl) estadoEl.textContent = 'Leyendo con IA...';
+  try{
+    const datos = await leerComprobanteConIA(file);
+    // "Cliente final" en una venta es el RECEPTOR del documento, no el emisor
+    // (el emisor ahí es el propio cliente del estudio) — usar los campos _receptor.
+    if(datos.ruc_receptor) document.getElementById('mVentaRuc').value = datos.ruc_receptor;
+    if(datos.razon_social_receptor) document.getElementById('mVentaRazonSocial').value = datos.razon_social_receptor;
+    if(datos.fecha_emision) document.getElementById('mVentaFecha').value = datos.fecha_emision;
+    if(datos.tipo_comprobante && TIPOS_COMPROBANTE.includes(datos.tipo_comprobante)){
+      document.getElementById('mVentaTipo').value = datos.tipo_comprobante;
+    }
+    if(datos.numero_comprobante) document.getElementById('mVentaNumero').value = datos.numero_comprobante;
+    if(datos.concepto) document.getElementById('mVentaConcepto').value = datos.concepto;
+    if(datos.moneda && ['PEN','USD'].includes(datos.moneda)) document.getElementById('mVentaMoneda').value = datos.moneda;
+    if(datos.monto_retencion) document.getElementById('mVentaRetencionMonto').value = datos.monto_retencion;
+    if(datos.porcentaje_retencion) document.getElementById('mVentaRetencionPct').value = datos.porcentaje_retencion;
+    if(datos.monto_total){
+      document.getElementById('mVentaMonto').value = datos.monto_total;
+    }
+    ventasRecalcular();
+    if(estadoEl) estadoEl.textContent = '✓ Datos leídos automáticamente — revísalos antes de guardar.';
+  }catch(err){
+    if(estadoEl) estadoEl.textContent = 'No se pudo leer automáticamente (' + err.message + ') — completa los campos a mano.';
+  }
+}
+
+async function guardarVenta(idParaEditar){
+  const clienteId = document.getElementById('mVentaCliente').value;
+  const file = document.getElementById('mVentaArchivo').files[0];
+  if(!clienteId){ showToast('Selecciona el cliente', true); return; }
+  if(!idParaEditar && !file){ showToast('Selecciona un archivo', true); return; }
+  const btn = document.getElementById('btnGuardarVenta');
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+  try{
+    let archivoUrl;
+    if(file) archivoUrl = await subirArchivoComprobante(file, clienteId);
+    const monto = Number(document.getElementById('mVentaMonto').value)||0;
+    const pct = Number(document.getElementById('mVentaDetraccionPct').value)||0;
+    const retencionMonto = Number(document.getElementById('mVentaRetencionMonto').value)||0;
+    const retencionPct = Number(document.getElementById('mVentaRetencionPct').value)||0;
+    const {detraccionMonto, netoCobrar} = calcularNetoVenta(monto, pct, retencionMonto);
+    const payload = {
+      ruc_cliente_final: document.getElementById('mVentaRuc').value.trim() || null,
+      razon_social_cliente_final: document.getElementById('mVentaRazonSocial').value.trim() || null,
+      fecha_emision: document.getElementById('mVentaFecha').value || null,
+      tipo_comprobante: document.getElementById('mVentaTipo').value,
+      numero_comprobante: document.getElementById('mVentaNumero').value.trim() || null,
+      concepto: document.getElementById('mVentaConcepto').value.trim() || null,
+      moneda: document.getElementById('mVentaMoneda').value,
+      monto_total: monto,
+      detraccion_pct: pct,
+      detraccion_monto: detraccionMonto,
+      monto_retencion: retencionMonto || null,
+      porcentaje_retencion: retencionPct || null,
+      neto_cobrar: netoCobrar
+    };
+    if(!idParaEditar) payload.cliente_id = clienteId;
+    if(archivoUrl) payload.archivo_url = archivoUrl;
+
+    let data, error;
+    if(idParaEditar){
+      ({data, error} = await sb.from('comprobantes_venta').update(payload).eq('id', idParaEditar).select().single());
+    } else {
+      ({data, error} = await sb.from('comprobantes_venta').insert(payload).select().single());
+    }
+    if(error) throw error;
+
+    const vinculoInfo = (!idParaEditar && conciliacionVinculoPendiente && conciliacionVinculoPendiente.tipo==='venta')
+      ? conciliacionVinculoPendiente : null;
+    conciliacionVinculoPendiente = null;
+
+    if(idParaEditar){
+      const idx = state.comprobantesVenta.findIndex(x=>x.id===idParaEditar);
+      if(idx>=0) state.comprobantesVenta[idx] = mapComprobanteVentaFromDb(data);
+    } else {
+      state.comprobantesVenta.unshift(mapComprobanteVentaFromDb(data));
+    }
+    closeModal();
+    renderAll();
+
+    let mensajeExtra = '';
+    if(vinculoInfo){
+      const nuevo = state.comprobantesVenta[0];
+      const mov = state.conciliacionMovimientos.find(m=>m.id===vinculoInfo.movimientoId);
+      try{
+        await crearPagoVinculadoAMovimiento('venta', nuevo.id, totalComparableComprobante('venta', nuevo), mov?.fecha, vinculoInfo.movimientoId);
+        mensajeExtra = ' y vinculado al movimiento bancario';
+      }catch(errVinculo){
+        showToast('El comprobante se creó, pero no se pudo vincular el pago automáticamente: ' + errVinculo.message, true);
+      }
+      refrescarFichaClientePaneles();
+    }
+    showToast(idParaEditar ? 'Comprobante actualizado' : ('Comprobante de venta guardado' + mensajeExtra));
+  }catch(err){
+    showToast('Error guardando: ' + err.message, true);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = idParaEditar ? 'Guardar cambios' : 'Guardar';
+  }
+}
+
+async function eliminarVenta(id){
+  if(!confirm('¿Eliminar este comprobante de venta? Esta acción no se puede deshacer.')) return;
+  try{
+    const {error} = await sb.from('comprobantes_venta').delete().eq('id', id);
+    if(error) throw error;
+    state.comprobantesVenta = state.comprobantesVenta.filter(v=>v.id!==id);
+    state.pagos = state.pagos.filter(p=>p.comprobanteVentaId!==id);
+    renderAll();
+    showToast('Comprobante eliminado');
+  }catch(err){
+    showToast('Error eliminando: ' + err.message, true);
   }
 }
 
@@ -2413,13 +3789,44 @@ async function eliminarCliente(id){
   }catch(err){ showToast('Error: '+err.message, true); }
 }
 
+let fichaClienteId = null;
+let fichaClientePeriodo = null;
+let fichaClienteTodos = false;
+
 function openFichaCliente(id){
   const c = state.clientes.find(x=>x.id===id);
   if(!c) return;
+  fichaClienteId = id;
+  fichaClientePeriodo = periodoActualComprobantes();
+  fichaClienteTodos = false;
+  fichaConciliacionBanco = null;
+  fichaConciliacionMoneda = null;
+
   const cuentasCliente = state.cuentas.filter(x=>x.clienteId===id);
   const saldoImp = cuentasCliente.filter(x=>x.categoria==='impuesto').reduce((s,x)=>s+saldo(x),0);
   const saldoHon = cuentasCliente.filter(x=>x.categoria==='honorario').reduce((s,x)=>s+saldo(x),0);
-  const body = `
+
+  const comprasCliente = state.comprobantesCompra.filter(x=>x.clienteId===id);
+  const ventasCliente = state.comprobantesVenta.filter(x=>x.clienteId===id);
+  // Incluye 'parcial_*' — un abono parcial no debe desaparecer de "pendientes",
+  // y se suma el saldo real, no el monto bruto (ver mismo criterio en el dashboard).
+  const comprasPendientes = comprasCliente.filter(x=>x.estado!=='sustentado');
+  const ventasPendientes = ventasCliente.filter(x=>x.estado!=='cobrado');
+  // Nunca se mezcla PEN con USD: cada total es por moneda.
+  const totalPorPagarClientePorMoneda = agruparSaldoPorMoneda(comprasPendientes, 'compra');
+  const totalPorCobrarClientePorMoneda = agruparSaldoPorMoneda(ventasPendientes, 'venta');
+  const totalDetraccionClientePorMoneda = agruparCampoPorMoneda(ventasPendientes, 'detraccionMonto');
+
+  const buckets = {r0_15:0, r15_30:0, r30_mas:0};
+  [...comprasPendientes, ...ventasPendientes].forEach(item=>{
+    const dias = diasAntiguedad(item.fechaEmision);
+    if(dias===null) return;
+    if(dias<=15) buckets.r0_15++;
+    else if(dias<=30) buckets.r15_30++;
+    else buckets.r30_mas++;
+  });
+
+  const bodyResumen = `
     <div class="form-section-title first">Datos generales</div>
     <div class="ficha-grid">
       <div class="ficha-item"><b>RUC / DNI</b><span>${escapeHtml(c.ruc)||'—'}</span></div>
@@ -2462,8 +3869,33 @@ function openFichaCliente(id){
     <div class="ficha-grid">
       <div class="ficha-item"><b>Impuestos pendientes</b><span>${fmtMoney(saldoImp)}</span></div>
       ${state.miPerfil?.rol==='super_admin' ? `<div class="ficha-item"><b>Honorarios por cobrar</b><span>${fmtMoney(saldoHon)}</span></div>` : ''}
+      <div class="ficha-item"><b>Por cobrar (ventas)</b><span>${fmtMoneyPorMoneda(totalPorCobrarClientePorMoneda)}</span></div>
+      <div class="ficha-item"><b>Por pagar (compras)</b><span>${fmtMoneyPorMoneda(totalPorPagarClientePorMoneda)}</span></div>
+      <div class="ficha-item"><b>Detracciones pendientes</b><span>${fmtMoneyPorMoneda(totalDetraccionClientePorMoneda)}</span></div>
+      <div class="ficha-item" style="grid-column:1/-1;"><b>Antigüedad de comprobantes pendientes</b><span style="display:flex; gap:6px; flex-wrap:wrap; margin-top:2px;">
+        <span class="badge badge-pendiente"><span class="badge-dot"></span>0-15d: ${buckets.r0_15}</span>
+        <span class="badge badge-parcial"><span class="badge-dot"></span>15-30d: ${buckets.r15_30}</span>
+        <span class="badge badge-vencido"><span class="badge-dot"></span>+30d: ${buckets.r30_mas}</span>
+      </span></div>
     </div>
     ${c.notas ? `<div class="form-section-title">Notas</div><div class="cell-muted">${escapeHtml(c.notas)}</div>` : ''}
+  `;
+
+  const bodyCompras = fichaComprasHtml(id);
+  const bodyVentas = fichaVentasHtml(id);
+  const bodyConciliacion = fichaConciliacionHtml(id);
+
+  const body = `
+    <div class="ficha-tabs" id="fichaClienteTabs">
+      <div class="ficha-tab active" data-tab="resumen" onclick="fichaClienteSetTab('resumen')">Resumen</div>
+      <div class="ficha-tab" data-tab="compras" onclick="fichaClienteSetTab('compras')">Comprobantes de compra${comprasCliente.length?' ('+comprasCliente.length+')':''}</div>
+      <div class="ficha-tab" data-tab="ventas" onclick="fichaClienteSetTab('ventas')">Comprobantes de venta${ventasCliente.length?' ('+ventasCliente.length+')':''}</div>
+      <div class="ficha-tab" data-tab="conciliacion" onclick="fichaClienteSetTab('conciliacion')">Conciliación bancaria</div>
+    </div>
+    <div id="fichaClientePanel-resumen">${bodyResumen}</div>
+    <div id="fichaClientePanel-compras" style="display:none;">${bodyCompras}</div>
+    <div id="fichaClientePanel-ventas" style="display:none;">${bodyVentas}</div>
+    <div id="fichaClientePanel-conciliacion" style="display:none;">${bodyConciliacion}</div>
   `;
   const foot = `
     <button class="btn btn-outline" onclick="closeModal()">Cerrar</button>
@@ -2471,7 +3903,948 @@ function openFichaCliente(id){
     <button class="btn btn-teal" onclick="generarReporteCliente('${id}')">📄 Reporte de impuestos</button>
     <button class="btn btn-primary" onclick="closeModal(); openClienteModal('${id}')">Editar</button>
   `;
-  openModal('Ficha de cliente — ' + escapeHtml(c.nombre), body, foot);
+  openModal('Ficha de cliente — ' + escapeHtml(c.nombre), body, foot, true);
+}
+
+function fichaComprasHtml(clienteId){
+  const todas = state.comprobantesCompra.filter(x=>x.clienteId===clienteId)
+    .slice().sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+  if(todas.length===0){
+    return `<div class="empty-state"><div class="ico">🧾</div><b>Sin comprobantes de compra</b>Todavía no se ha subido ninguna factura de compra para este cliente.</div>`;
+  }
+  const toolbar = periodoToolbarHtml('fichaClienteNavPeriodo', 'fichaClienteToggleTodos', fichaClientePeriodo, fichaClienteTodos, 'fichaClienteExportarExcel', 'fichaClienteExportarZip');
+  const filtradas = filtrarPorPeriodo(todas, fichaClientePeriodo, fichaClienteTodos);
+  if(filtradas.length===0){
+    return toolbar + `<div class="empty-state"><div class="ico">🧾</div><b>Sin comprobantes en este período</b>Prueba "Ver todos" o navega a otro mes.</div>`;
+  }
+  return toolbar + `<div style="overflow-x:auto;"><table>
+      <thead><tr><th>Fecha</th><th>Proveedor</th><th>Concepto</th><th class="num">Monto</th><th>Estado</th><th></th></tr></thead>
+      <tbody>${filtradas.map(x=>{
+        const yaCompleto = x.estado==='sustentado';
+        const tienePago = x.estado!=='pendiente_sustento';
+        return `<tr>
+          <td class="cell-muted">${x.fechaEmision?fmtFecha(x.fechaEmision):'—'}</td>
+          <td class="cell-strong">${escapeHtml(x.razonSocialProveedor)||'—'}<div class="cell-muted">${escapeHtml(x.rucProveedor)||''}</div></td>
+          <td class="cell-muted">${escapeHtml(x.concepto)||'—'}</td>
+          <td class="num">${montoCompraHtml(x)}</td>
+          <td>${estadoComprobanteBadge('compra', x, badgeAntiguedad)}</td>
+          <td class="row-actions">
+            <button class="btn-ghost btn-sm" onclick="verArchivoComprobante('${x.archivoUrl}')">Ver</button>
+            ${!yaCompleto ? `<button class="btn btn-teal btn-sm" onclick="openPagoModal('compra','${x.id}')">${tienePago?'Registrar más':'Marcar sustentado'}</button>` : ''}
+            ${tienePago ? `<button class="btn-ghost btn-sm" onclick="revertirEstadoComprobante('compra','${x.id}')">↺ Revertir</button>` : ''}
+            <button class="btn-ghost btn-sm" onclick="editarCompraClick('${x.id}')">Editar</button>
+          </td>
+        </tr>${pagosExpandedRowHtml('compra', x.id, 6)}`;
+      }).join('')}</tbody>
+    </table></div>`;
+}
+
+function fichaVentasHtml(clienteId){
+  const todas = state.comprobantesVenta.filter(x=>x.clienteId===clienteId)
+    .slice().sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+  if(todas.length===0){
+    return `<div class="empty-state"><div class="ico">🧾</div><b>Sin comprobantes de venta</b>Todavía no se ha registrado ninguna venta para este cliente.</div>`;
+  }
+  const toolbar = periodoToolbarHtml('fichaClienteNavPeriodo', 'fichaClienteToggleTodos', fichaClientePeriodo, fichaClienteTodos, 'fichaClienteExportarExcel', 'fichaClienteExportarZip');
+  const filtradas = filtrarPorPeriodo(todas, fichaClientePeriodo, fichaClienteTodos);
+  if(filtradas.length===0){
+    return toolbar + `<div class="empty-state"><div class="ico">🧾</div><b>Sin comprobantes en este período</b>Prueba "Ver todos" o navega a otro mes.</div>`;
+  }
+  return toolbar + `<div style="overflow-x:auto;"><table>
+      <thead><tr><th>Fecha</th><th>Cliente final</th><th>Concepto</th><th class="num">Detracción</th><th class="num">Neto a cobrar</th><th>Estado</th><th></th></tr></thead>
+      <tbody>${filtradas.map(x=>{
+        const yaCompleto = x.estado==='cobrado';
+        const tienePago = x.estado!=='pendiente_cobro';
+        return `<tr>
+          <td class="cell-muted">${x.fechaEmision?fmtFecha(x.fechaEmision):'—'}</td>
+          <td class="cell-strong">${escapeHtml(x.razonSocialClienteFinal)||'—'}<div class="cell-muted">${escapeHtml(x.rucClienteFinal)||''}</div></td>
+          <td class="cell-muted">${escapeHtml(x.concepto)||'—'}</td>
+          <td class="num">${detraccionVentaHtml(x)}</td>
+          <td class="num">${x.netoCobrar!=null?fmtMoney(x.netoCobrar, x.moneda):'—'}</td>
+          <td>${estadoComprobanteBadge('venta', x, badgeAntiguedad)}</td>
+          <td class="row-actions">
+            <button class="btn-ghost btn-sm" onclick="verArchivoComprobante('${x.archivoUrl}')">Ver</button>
+            ${!yaCompleto ? `<button class="btn btn-teal btn-sm" onclick="openPagoModal('venta','${x.id}')">${tienePago?'Registrar más':'Marcar cobrado'}</button>` : ''}
+            ${tienePago ? `<button class="btn-ghost btn-sm" onclick="revertirEstadoComprobante('venta','${x.id}')">↺ Revertir</button>` : ''}
+            <button class="btn-ghost btn-sm" onclick="editarVentaClick('${x.id}')">Editar</button>
+          </td>
+        </tr>${pagosExpandedRowHtml('venta', x.id, 7)}`;
+      }).join('')}</tbody>
+    </table></div>`;
+}
+
+function refrescarFichaClientePaneles(){
+  const elC = document.getElementById('fichaClientePanel-compras');
+  const elV = document.getElementById('fichaClientePanel-ventas');
+  const elK = document.getElementById('fichaClientePanel-conciliacion');
+  if(elC) elC.innerHTML = fichaComprasHtml(fichaClienteId);
+  if(elV) elV.innerHTML = fichaVentasHtml(fichaClienteId);
+  if(elK) elK.innerHTML = fichaConciliacionHtml(fichaClienteId);
+}
+function fichaClienteNavPeriodo(delta){
+  if(fichaClienteTodos) return;
+  fichaClientePeriodo = sumarMesesPeriodo(fichaClientePeriodo, delta);
+  refrescarFichaClientePaneles();
+}
+function fichaClienteToggleTodos(){
+  fichaClienteTodos = !fichaClienteTodos;
+  refrescarFichaClientePaneles();
+}
+
+function fichaClienteExportarExcel(){
+  const cliente = state.clientes.find(x=>x.id===fichaClienteId);
+  const compras = filtrarPorPeriodo(state.comprobantesCompra.filter(x=>x.clienteId===fichaClienteId), fichaClientePeriodo, fichaClienteTodos);
+  const ventas = filtrarPorPeriodo(state.comprobantesVenta.filter(x=>x.clienteId===fichaClienteId), fichaClientePeriodo, fichaClienteTodos);
+  exportarComprobantesExcel(cliente?.nombre || 'cliente', compras, ventas, periodoParaArchivo(fichaClientePeriodo, fichaClienteTodos));
+}
+async function fichaClienteExportarZip(){
+  const cliente = state.clientes.find(x=>x.id===fichaClienteId);
+  const compras = filtrarPorPeriodo(state.comprobantesCompra.filter(x=>x.clienteId===fichaClienteId), fichaClientePeriodo, fichaClienteTodos);
+  const ventas = filtrarPorPeriodo(state.comprobantesVenta.filter(x=>x.clienteId===fichaClienteId), fichaClientePeriodo, fichaClienteTodos);
+  await exportarComprobantesZip(cliente?.nombre || 'cliente', compras, ventas, state.pagos, periodoParaArchivo(fichaClientePeriodo, fichaClienteTodos));
+}
+
+function fichaClienteSetTab(tab){
+  document.querySelectorAll('#fichaClienteTabs .ficha-tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===tab));
+  ['resumen','compras','ventas','conciliacion'].forEach(t=>{
+    const el = document.getElementById('fichaClientePanel-'+t);
+    if(el) el.style.display = (t===tab) ? '' : 'none';
+  });
+}
+
+/* ================= CONCILIACIÓN BANCARIA =================
+   Sube un estado de cuenta (PDF), lo lee con IA (misma ruta del Worker de OCR,
+   endpoint /estado-cuenta), guarda sus movimientos en conciliacion_movimientos.
+
+   El filtro principal para navegar los movimientos es el PERÍODO (mes/año,
+   mismo componente ‹ Mes Año › que ya usan comprobantes), NO el archivo/lote
+   subido — un movimiento se filtra por su propia fecha sin importar de qué
+   estado de cuenta vino, así el usuario no necesita saber en cuál lote quedó
+   algo. La ficha del cliente (staff) reutiliza fichaClientePeriodo/Todos (ya
+   compartido con las pestañas de compras/ventas); "Mis Comprobantes" (rol
+   cliente, solo lectura) reutiliza misComprobantesPeriodo/Todos. Cada
+   movimiento sigue guardando de qué archivo/banco vino (columnas banco /
+   nombre_archivo_original) y se muestra como una etiqueta chica junto a la
+   fecha — es información, ya no un control de filtro.
+
+   Modelo de persistencia: un movimiento con estado='pendiente' en la BD pasa
+   por el algoritmo automático en cada render (1 candidato -> match, 2+ ->
+   ambiguo, 0 -> sin sistema) — nada de esto se escribe en la BD porque es
+   100% derivable y determinístico. Un movimiento con estado='conciliado'
+   (vínculo manual o comprobante creado desde acá) o estado='ignorado' ya está
+   resuelto y no se recalcula: se lee tal cual. Por eso "Revertir" solo tiene
+   sentido en conciliados MANUALES — uno automático no tiene nada persistido
+   que revertir (volvería a auto-matchear en el siguiente render).
+
+   El rol 'cliente' tiene acceso de SOLO LECTURA (ver sql/012): puede ver sus
+   propios movimientos pero no puede subir, vincular, ignorar, crear
+   comprobantes ni revertir — igual que "Mis Impuestos". Por eso las funciones
+   de acción (subirEstadoCuentaConciliacion, abrirVincularMovimiento,
+   ignorarMovimiento, revertirMovimientoConciliacion,
+   fichaConciliacionCrearComprobante) solo se usan desde la ficha de cliente
+   del staff; conciliacionGruposHtml(resultado, {soloLectura}) es la que
+   decide si pinta esos botones o no, reutilizada por ambas vistas. */
+let fichaConciliacionSubiendo = false;
+// Filtros de banco/cuenta y moneda — cada uno independiente del período y
+// entre sí, los tres se combinan con AND. null/'' = "sin filtrar" en ambos.
+// Los de ficha de cliente se resetean al abrir la ficha (ver
+// openFichaCliente); los de "Mis Comprobantes" viven mientras dure la sesión
+// del cliente, igual que su período.
+let fichaConciliacionBanco = null;
+let misConciliacionBanco = null;
+let fichaConciliacionMoneda = null;
+let misConciliacionMoneda = null;
+// {movimientoId, tipo} mientras el modal de compra/venta está abierto desde
+// "Crear comprobante" en conciliación — se limpia al abrir CUALQUIER otro
+// modal de compra/venta (ver openComprobanteCompraModal/openVentaModal), así
+// que nunca sobrevive a un flujo distinto ni a un "Cancelar".
+let conciliacionVinculoPendiente = null;
+
+const CONCILIACION_TOL_MONTO_FIJA = 1; // S/ o US$ 1, lo que sea mayor frente al %
+const CONCILIACION_TOL_MONTO_PCT = 0.005; // 0.5%
+const CONCILIACION_TOL_DIAS = 3;
+
+function conciliacionDiasEntre(f1, f2){
+  if(!f1 || !f2) return Infinity;
+  const d1 = new Date(f1+'T00:00:00');
+  const d2 = new Date(f2+'T00:00:00');
+  if(isNaN(d1) || isNaN(d2)) return Infinity;
+  return Math.abs(Math.round((d1-d2)/86400000));
+}
+function conciliacionSumarDias(fechaStr, dias){
+  if(!fechaStr) return null;
+  const d = new Date(fechaStr+'T00:00:00');
+  if(isNaN(d)) return null;
+  d.setDate(d.getDate()+dias);
+  return d.toISOString().slice(0,10);
+}
+function conciliacionMontoCoincide(montoMov, montoPago){
+  const tol = Math.max(CONCILIACION_TOL_MONTO_FIJA, Math.abs(Number(montoPago||0))*CONCILIACION_TOL_MONTO_PCT);
+  return Math.abs(Number(montoMov||0) - Number(montoPago||0)) <= tol;
+}
+
+// Primer y último día del mes de `periodo` ("YYYY-MM"), como {inicio, fin}
+// "YYYY-MM-DD" — null/null si `todos` (sin límite de fechas, "Ver todos").
+function rangoDePeriodo(periodo, todos){
+  if(todos || !periodo) return {inicio: null, fin: null};
+  const [y, m] = periodo.split('-').map(Number);
+  const inicio = `${y}-${String(m).padStart(2,'0')}-01`;
+  const ultimoDia = new Date(y, m, 0).getDate();
+  const fin = `${y}-${String(m).padStart(2,'0')}-${String(ultimoDia).padStart(2,'0')}`;
+  return {inicio, fin};
+}
+// trim + espacios colapsados + mayúsculas — para que "Bbva ", "BBVA" y "bbva"
+// (variaciones normales de lectura OCR) se agrupen como el mismo banco.
+function normalizarBanco(s){
+  return (s||'').trim().replace(/\s+/g, ' ').toUpperCase();
+}
+// Identifica de qué banco/cuenta viene un movimiento: el nombre del banco
+// (normalizado) si la IA lo pudo leer, si no el nombre del archivo original
+// subido. Es la clave que agrupa movimientos de distintos lotes/archivos como
+// "la misma cuenta" en el selector (ej. dos estados de cuenta de BCP subidos
+// en meses distintos). Cuando la IA no pudo leer el banco en un lote (quedó
+// en null) y por eso cayó al nombre del archivo, no hay forma automática de
+// saber que en realidad es el mismo banco que otro lote — para eso existe
+// "Corregir banco" en el modal de gestión de subidas (ver abajo).
+function identificadorCuentaMovimiento(mov){
+  const banco = normalizarBanco(mov.banco);
+  return banco || mov.nombreArchivoOriginal || null;
+}
+// Bancos/cuentas distintos que tiene un cliente — se calcula sobre TODOS sus
+// movimientos (sin aplicar el filtro de período), para que la opción no
+// desaparezca del selector solo porque el mes elegido no tenga datos de ese
+// banco.
+function bancosDisponibles(clienteId){
+  const todos = state.conciliacionMovimientos.filter(m=>m.clienteId===clienteId);
+  return [...new Set(todos.map(identificadorCuentaMovimiento).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+}
+// Agrupa los movimientos de un cliente por subida (archivo_estado_cuenta —
+// ya es único por subida: cada upload genera un UUID nuevo, incluso si es el
+// mismo PDF re-subido). No es un filtro visible (eso lo resolvió el período +
+// banco); esto es exclusivamente para el modal de gestión: corregir el banco
+// de una subida completa o eliminarla entera.
+function subidasConciliacion(clienteId){
+  const movs = state.conciliacionMovimientos.filter(m=>m.clienteId===clienteId);
+  const porArchivo = new Map();
+  movs.forEach(m=>{
+    if(!porArchivo.has(m.archivoEstadoCuenta)) porArchivo.set(m.archivoEstadoCuenta, []);
+    porArchivo.get(m.archivoEstadoCuenta).push(m);
+  });
+  return [...porArchivo.entries()].map(([archivo, movimientos])=>({
+    archivo,
+    movimientos,
+    banco: movimientos[0]?.banco,
+    nombreArchivoOriginal: movimientos[0]?.nombreArchivoOriginal,
+    periodoInicio: movimientos[0]?.periodoInicio,
+    periodoFin: movimientos[0]?.periodoFin,
+    createdAt: movimientos.reduce((max,m)=>(m.createdAt||'')>max?(m.createdAt||''):max, movimientos[0]?.createdAt||'')
+  })).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+}
+// Heurística de "esto ya lo subiste": compara los movimientos recién leídos
+// por la IA contra TODOS los que el cliente ya tiene guardados (de cualquier
+// subida anterior), usando una firma fecha|monto|moneda|tipo por movimiento
+// — no es una garantía (dos estados de cuenta distintos podrían compartir
+// algunos movimientos por coincidencia), por eso el umbral exige tanto una
+// proporción alta como un mínimo absoluto de coincidencias.
+function detectarPosibleDuplicado(clienteId, movimientosNuevos){
+  const existentes = state.conciliacionMovimientos.filter(m=>m.clienteId===clienteId);
+  if(existentes.length===0 || movimientosNuevos.length===0) return null;
+  const firmaExistente = m => `${m.fecha}|${Number(m.monto||0).toFixed(2)}|${m.moneda}|${m.tipo}`;
+  const firmaNueva = m => `${m.fecha}|${Number(m.monto||0).toFixed(2)}|${m.moneda||'PEN'}|${m.tipo}`;
+  const firmasExistentes = new Set(existentes.map(firmaExistente));
+  const coincidencias = movimientosNuevos.filter(m=>firmasExistentes.has(firmaNueva(m))).length;
+  const total = movimientosNuevos.length;
+  const proporcion = coincidencias / total;
+  if(proporcion >= 0.7 && coincidencias >= 3){
+    return {coincidencias, total, proporcion};
+  }
+  return null;
+}
+
+// Red de seguridad contra errores de lectura del Worker (ej. el año mal
+// leído: "13/05/2024" en vez de "13/05/2026") — no confía en que el prompt
+// siempre acierte. Ancla el rango "plausible" en periodo_inicio/periodo_fin
+// SI la IA los dio; si no, usa la MEDIANA de las propias fechas de los
+// movimientos (no el mínimo/máximo — el mínimo/máximo son justo los valores
+// que un par de fechas mal leídas ya habrían contaminado, la mediana es
+// resistente a un puñado de outliers). ±45 días de margen: suficiente para
+// no marcar un movimiento normal cerca del borde del período, muy por debajo
+// de la brecha de un año mal leído (~365+ días).
+const CONCILIACION_TOL_PLAUSIBILIDAD_DIAS = 45;
+function detectarFechasImplausibles(movimientos, periodoInicioIA, periodoFinIA){
+  let centroInicio, centroFin;
+  if(periodoInicioIA && periodoFinIA){
+    centroInicio = periodoInicioIA;
+    centroFin = periodoFinIA;
+  } else {
+    const fechasOrdenadas = movimientos.map(m=>m.fecha).filter(Boolean).sort();
+    if(fechasOrdenadas.length===0) return [];
+    const mediana = fechasOrdenadas[Math.floor(fechasOrdenadas.length/2)];
+    centroInicio = mediana;
+    centroFin = mediana;
+  }
+  const desde = conciliacionSumarDias(centroInicio, -CONCILIACION_TOL_PLAUSIBILIDAD_DIAS);
+  const hasta = conciliacionSumarDias(centroFin, CONCILIACION_TOL_PLAUSIBILIDAD_DIAS);
+  return movimientos.filter(m => m.fecha && ((desde && m.fecha < desde) || (hasta && m.fecha > hasta)));
+}
+
+// Selector de banco (lista dinámica, calculada de los datos) + selector de
+// moneda (enum fijo PEN/USD) en una sola fila — dos filtros independientes,
+// no relacionados entre sí (identificadorCuentaMovimiento nunca mira moneda,
+// así que un mismo banco con cuentas en soles y dólares sigue siendo UNA
+// sola entrada en el selector de banco).
+function selectoresFiltroConciliacionHtml(clienteId, bancoActivo, monedaActiva, onchangeBancoFn, onchangeMonedaFn){
+  const bancos = bancosDisponibles(clienteId);
+  return `
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
+      ${bancos.length>0 ? `
+        <select onchange="${onchangeBancoFn}(this.value)" style="max-width:240px;">
+          <option value="" ${!bancoActivo?'selected':''}>Todos los bancos</option>
+          ${bancos.map(b=>`<option value="${escapeHtml(b)}" ${b===bancoActivo?'selected':''}>${escapeHtml(b)}</option>`).join('')}
+        </select>
+      ` : ''}
+      <select onchange="${onchangeMonedaFn}(this.value)" style="max-width:180px;">
+        <option value="" ${!monedaActiva?'selected':''}>Todas las monedas</option>
+        <option value="PEN" ${monedaActiva==='PEN'?'selected':''}>Soles (S/)</option>
+        <option value="USD" ${monedaActiva==='USD'?'selected':''}>Dólares (US$)</option>
+      </select>
+    </div>
+  `;
+}
+
+// "Nombre — Tipo Número" (ej. "Proveedor SAC — Factura E001-135"), o solo el
+// nombre si el comprobante todavía no tiene tipo/número. Sin escapar (texto
+// crudo): se usa tanto para pintar HTML (el template lo escapa al insertarlo)
+// como para el export a Excel (donde no queremos entidades HTML en la celda).
+function etiquetaComprobanteParaConciliacion(nombre, tipoComprobante, numeroComprobante){
+  const detalle = [tipoComprobante, numeroComprobante].filter(Boolean).join(' ');
+  return detalle ? `${nombre} — ${detalle}` : nombre;
+}
+
+// pagos no guarda moneda/dirección propia — se derivan del comprobante padre
+// (venta=abono, ya que entra dinero al banco; compra=cargo, sale dinero).
+function pagosParaConciliar(clienteId){
+  const compraById = new Map(state.comprobantesCompra.filter(c=>c.clienteId===clienteId).map(c=>[c.id, c]));
+  const ventaById = new Map(state.comprobantesVenta.filter(v=>v.clienteId===clienteId).map(v=>[v.id, v]));
+  return state.pagos
+    .filter(p => (p.comprobanteCompraId && compraById.has(p.comprobanteCompraId)) || (p.comprobanteVentaId && ventaById.has(p.comprobanteVentaId)))
+    .map(p=>{
+      if(p.comprobanteCompraId){
+        const c = compraById.get(p.comprobanteCompraId);
+        return {...p, moneda: c.moneda||'PEN', tipo:'cargo', comprobanteLabel: etiquetaComprobanteParaConciliacion(c.razonSocialProveedor || 'Compra', c.tipoComprobante, c.numeroComprobante), comprobanteTipo:'compra', comprobanteId: c.id};
+      }
+      const v = ventaById.get(p.comprobanteVentaId);
+      return {...p, moneda: v.moneda||'PEN', tipo:'abono', comprobanteLabel: etiquetaComprobanteParaConciliacion(v.razonSocialClienteFinal || 'Venta', v.tipoComprobante, v.numeroComprobante), comprobanteTipo:'venta', comprobanteId: v.id};
+    });
+}
+
+// Algoritmo greedy sobre los movimientos aún 'pendiente': busca, entre los
+// pagos del cliente aún no usados, los que compartan moneda+dirección y
+// caigan dentro de la tolerancia de monto/fecha. 1 candidato -> conciliado
+// automático. 0 -> "banco sin sistema". 2+ -> ambiguo, no se adivina.
+// Los movimientos ya resueltos (estado='conciliado'/'ignorado') se respetan
+// tal cual están en la BD y NO vuelven a pasar por el algoritmo.
+//
+// IMPORTANTE: esto corre SIEMPRE sobre TODOS los movimientos del cliente —
+// nunca sobre un subconjunto ya filtrado por período/banco/moneda. Si se le
+// pasara un subconjunto, un movimiento con match real podría quedar excluido
+// del cálculo solo por no pasar el filtro activo, y su pago aparecería como
+// "sin banco" — el estado de conciliación de algo terminaría dependiendo de
+// qué filtro tenías puesto en pantalla, en vez de ser un hecho fijo. La
+// tolerancia de ±3 días por movimiento (ver arriba) ya evita falsos matches
+// entre fechas lejanas, así que no hace falta acotar por período para eso.
+// Los filtros de período/banco/moneda se aplican DESPUÉS, sobre el
+// resultado ya calculado — ver filtrarResultadoConciliacion.
+function conciliarMovimientos(clienteId){
+  const movimientos = state.conciliacionMovimientos.filter(m=>m.clienteId===clienteId);
+  const pagos = pagosParaConciliar(clienteId);
+  const pagosById = new Map(pagos.map(p=>[p.id, p]));
+  const pagosUsados = new Set();
+  const conciliados = [];
+  const ignorados = [];
+  const pendientes = [];
+
+  movimientos.forEach(mov=>{
+    if(mov.estado === 'ignorado'){ ignorados.push(mov); return; }
+    if(mov.estado === 'conciliado' && mov.pagoId && pagosById.has(mov.pagoId)){
+      const pago = pagosById.get(mov.pagoId);
+      pagosUsados.add(pago.id);
+      conciliados.push({movimiento: mov, pago, manual: true});
+      return;
+    }
+    // 'pendiente', o un 'conciliado' cuyo pago_id ya no existe (se borró el
+    // pago) — en ese caso raro se re-evalúa como pendiente en vez de romper.
+    pendientes.push(mov);
+  });
+
+  const ambiguos = [];
+  const bancoSinSistema = [];
+  pendientes.forEach(mov=>{
+    const candidatos = pagos.filter(p=>
+      !pagosUsados.has(p.id) &&
+      p.moneda === mov.moneda &&
+      p.tipo === mov.tipo &&
+      conciliacionMontoCoincide(mov.monto, p.monto) &&
+      conciliacionDiasEntre(mov.fecha, p.fechaPago) <= CONCILIACION_TOL_DIAS
+    );
+    if(candidatos.length === 1){
+      conciliados.push({movimiento: mov, pago: candidatos[0], manual: false});
+      pagosUsados.add(candidatos[0].id);
+    } else if(candidatos.length > 1){
+      ambiguos.push({movimiento: mov, candidatos});
+    } else {
+      bancoSinSistema.push(mov);
+    }
+  });
+
+  // "Sistema sin banco": pagos del cliente en una moneda para la que existe
+  // AL MENOS UN estado de cuenta cargado (en cualquier período/banco — si el
+  // cliente nunca subió nada en USD, no tiene sentido decir que un pago en
+  // USD "falta en el banco": no tenemos ningún dato bancario en esa moneda
+  // con qué compararlo), que no quedaron usados por ningún movimiento.
+  const monedasConDatosBancarios = new Set(movimientos.map(m=>m.moneda));
+  const sistemaSinBanco = pagos.filter(p=>
+    !pagosUsados.has(p.id) &&
+    monedasConDatosBancarios.has(p.moneda)
+  );
+
+  return {conciliados, ambiguos, bancoSinSistema, sistemaSinBanco, ignorados};
+}
+
+// Aplica período + banco + moneda al RESULTADO ya calculado por
+// conciliarMovimientos (nunca al cómputo del match en sí, ver nota arriba).
+// Los movimientos (conciliados/ambiguos/bancoSinSistema/ignorados) se filtran
+// por su propia fecha/banco/moneda; los pagos de "sistema sin banco" solo por
+// fecha de pago y moneda — banco nunca aplica ahí, un pago no sabe de qué
+// cuenta bancaria vino el dinero (ver nota en conciliacionGruposHtml).
+function filtrarResultadoConciliacion(resultado, {periodo, todos, banco, moneda}){
+  const rango = rangoDePeriodo(periodo, todos);
+  const desde = rango.inicio ? conciliacionSumarDias(rango.inicio, -CONCILIACION_TOL_DIAS) : null;
+  const hasta = rango.fin ? conciliacionSumarDias(rango.fin, CONCILIACION_TOL_DIAS) : null;
+
+  const movimientoPasaFiltro = (mov) => {
+    if(!todos && (!mov.fecha || periodoDeFecha(mov.fecha)!==periodo)) return false;
+    if(banco && identificadorCuentaMovimiento(mov)!==banco) return false;
+    if(moneda && mov.moneda!==moneda) return false;
+    return true;
+  };
+  const pagoPasaFiltro = (pago) => {
+    if(desde && pago.fechaPago && pago.fechaPago < desde) return false;
+    if(hasta && pago.fechaPago && pago.fechaPago > hasta) return false;
+    if(moneda && pago.moneda!==moneda) return false;
+    return true;
+  };
+
+  return {
+    conciliados: resultado.conciliados.filter(par=>movimientoPasaFiltro(par.movimiento)),
+    ambiguos: resultado.ambiguos.filter(a=>movimientoPasaFiltro(a.movimiento)),
+    bancoSinSistema: resultado.bancoSinSistema.filter(movimientoPasaFiltro),
+    ignorados: resultado.ignorados.filter(movimientoPasaFiltro),
+    sistemaSinBanco: resultado.sistemaSinBanco.filter(pagoPasaFiltro)
+  };
+}
+
+async function subirEstadoCuentaConciliacion(inputEl){
+  const file = inputEl.files[0];
+  if(!file) return;
+  if(fichaConciliacionSubiendo) return;
+  const clienteId = fichaClienteId;
+  fichaConciliacionSubiendo = true;
+  refrescarFichaClientePaneles();
+  try{
+    showToast('Leyendo estado de cuenta con IA… esto puede tardar unos segundos');
+    const datos = await leerEstadoCuentaConIA(file);
+    if(!datos.movimientos || datos.movimientos.length===0){
+      showToast('No se encontraron movimientos en el archivo', true);
+      return;
+    }
+    const posibleDup = detectarPosibleDuplicado(clienteId, datos.movimientos);
+    if(posibleDup){
+      const continuar = confirm(`Esto parece ser el mismo estado de cuenta que ya subiste antes (coinciden ${posibleDup.coincidencias} de ${posibleDup.total} movimientos con una subida existente). ¿Continuar de todas formas?`);
+      if(!continuar){
+        showToast('Subida cancelada');
+        return;
+      }
+    }
+    // Red de seguridad contra errores de lectura del Worker (ej. un año mal
+    // leído) — no depende de que el prompt siempre acierte. Si algún
+    // movimiento cae muy lejos del período del documento, avisa y pide
+    // confirmación explícita antes de guardarlo como si fuera correcto.
+    const sospechosos = detectarFechasImplausibles(datos.movimientos, datos.periodo_inicio, datos.periodo_fin);
+    if(sospechosos.length > 0){
+      const ejemplos = sospechosos.slice(0,3).map(m=>`${m.fecha} — ${fmtMoney(Number(m.monto)||0, m.moneda||'PEN')}${m.descripcion?' — '+m.descripcion:''}`).join('\n');
+      const masTexto = sospechosos.length>3 ? `\n... y ${sospechosos.length-3} más` : '';
+      const continuarFechas = confirm(`${sospechosos.length} movimiento(s) tienen una fecha muy alejada del período de este estado de cuenta — puede ser un error de lectura de la IA (ej. un año equivocado):\n${ejemplos}${masTexto}\n\n¿Continuar de todas formas?`);
+      if(!continuarFechas){
+        showToast('Subida cancelada — revisa las fechas marcadas', true);
+        return;
+      }
+    }
+    // Los chequeos de arriba corren ANTES de subir el archivo al storage a
+    // propósito — si el usuario cancela, no queremos haber gastado esa subida.
+    const archivoPath = await subirArchivoComprobante(file, clienteId);
+    // Si la IA no pudo leer el período del estado de cuenta (pasa con algunos
+    // formatos, ej. cuando el documento indica el período como "Enero 2026"
+    // en vez de un rango explícito de fechas), lo derivamos nosotros mismos
+    // de la fecha mínima/máxima entre los propios movimientos — siempre la
+    // tenemos, no depende de que la IA acierte. Esto importa por dos cosas:
+    // (1) que la columna quede poblada para "Gestionar subidas", y (2) sobre
+    // todo, que la navegación SIEMPRE salte al período correcto tras subir —
+    // si se queda en null, el salto de abajo no ocurre y el usuario se queda
+    // mirando en silencio el mes que tenía antes, sin ver lo que acaba de
+    // subir (así se manifestó este bug la primera vez).
+    const fechasMovimientos = datos.movimientos.map(m=>m.fecha).filter(Boolean).sort();
+    const periodoInicioFinal = datos.periodo_inicio || fechasMovimientos[0] || null;
+    const periodoFinFinal = datos.periodo_fin || fechasMovimientos[fechasMovimientos.length-1] || null;
+    const filas = datos.movimientos.map(m=>({
+      cliente_id: clienteId,
+      archivo_estado_cuenta: archivoPath,
+      banco: datos.banco || null,
+      nombre_archivo_original: file.name,
+      periodo_inicio: periodoInicioFinal,
+      periodo_fin: periodoFinFinal,
+      fecha: m.fecha || null,
+      monto: Number(m.monto)||0,
+      moneda: m.moneda || 'PEN',
+      tipo: m.tipo,
+      descripcion: m.descripcion || null
+    }));
+    const {data: insertados, error} = await sb.from('conciliacion_movimientos').insert(filas).select();
+    if(error) throw error;
+    const nuevos = insertados.map(mapConciliacionMovimientoFromDb);
+    state.conciliacionMovimientos.push(...nuevos);
+    // Salta la navegación de período al mes del estado de cuenta recién
+    // subido, para que el usuario vea el resultado altiro sin tener que
+    // buscarlo — reemplaza al viejo "seleccionar el lote subido". También
+    // limpia los filtros de banco/moneda, por si había otros seleccionados.
+    if(periodoInicioFinal){
+      fichaClientePeriodo = periodoDeFecha(periodoInicioFinal);
+      fichaClienteTodos = false;
+    }
+    fichaConciliacionBanco = null;
+    fichaConciliacionMoneda = null;
+    showToast(`Estado de cuenta leído: ${nuevos.length} movimiento(s)`);
+  }catch(err){
+    showToast('Error: ' + (err.message||err), true);
+  }finally{
+    fichaConciliacionSubiendo = false;
+    inputEl.value = '';
+    refrescarFichaClientePaneles();
+  }
+}
+
+// Modal de gestión: lista cada subida (agrupada por archivo_estado_cuenta,
+// ver subidasConciliacion) con la opción de corregir el banco leído por la
+// IA (cuando falló o vino con texto raro) o eliminar la subida completa. Solo
+// tiene sentido desde la ficha de cliente (staff) — el rol cliente no tiene
+// ninguna de estas acciones.
+function abrirGestionSubidasConciliacion(clienteId){
+  const subidas = subidasConciliacion(clienteId);
+  const body = subidas.length===0
+    ? `<div class="cell-muted">Todavía no hay ningún estado de cuenta subido.</div>`
+    : `<div style="overflow-x:auto;"><table>
+        <thead><tr><th>Banco</th><th>Período</th><th class="num">Movimientos</th><th></th></tr></thead>
+        <tbody>${subidas.map(s=>`<tr>
+          <td class="cell-strong">${escapeHtml(s.banco || s.nombreArchivoOriginal || 'Sin identificar')}${s.banco?`<div class="cell-muted" style="font-size:10.5px;">${escapeHtml(s.nombreArchivoOriginal)||''}</div>`:''}</td>
+          <td class="cell-muted">${s.periodoInicio?fmtFecha(s.periodoInicio):'—'} a ${s.periodoFin?fmtFecha(s.periodoFin):'—'}</td>
+          <td class="num">${s.movimientos.length}</td>
+          <td class="row-actions">
+            <button class="btn-ghost btn-sm" onclick="corregirBancoSubida('${escapeHtml(s.archivo)}')">✏️ Corregir banco</button>
+            <button class="btn-danger-ghost btn-sm" onclick="eliminarSubidaConciliacion('${escapeHtml(s.archivo)}')">🗑️ Eliminar</button>
+          </td>
+        </tr>`).join('')}</tbody>
+      </table></div>`;
+  const foot = `<button class="btn btn-outline" onclick="closeModal()">Cerrar</button>`;
+  openModal('Estados de cuenta subidos', body, foot);
+}
+
+async function corregirBancoSubida(archivoEstadoCuenta){
+  const actual = state.conciliacionMovimientos.find(m=>m.archivoEstadoCuenta===archivoEstadoCuenta)?.banco || '';
+  const nuevoTexto = prompt('Nombre del banco para esta subida (ej. "BBVA", "BCP", "Interbank"):', actual);
+  if(nuevoTexto === null) return; // canceló el prompt
+  const nuevoBanco = normalizarBanco(nuevoTexto) || null;
+  try{
+    const {error} = await sb.from('conciliacion_movimientos').update({banco: nuevoBanco}).eq('archivo_estado_cuenta', archivoEstadoCuenta);
+    if(error) throw error;
+    state.conciliacionMovimientos.forEach(m=>{ if(m.archivoEstadoCuenta===archivoEstadoCuenta) m.banco = nuevoBanco; });
+    refrescarFichaClientePaneles();
+    abrirGestionSubidasConciliacion(fichaClienteId); // re-renderiza el modal ya abierto con el cambio
+    showToast('Banco actualizado');
+  }catch(err){
+    showToast('Error: ' + err.message, true);
+  }
+}
+
+async function eliminarSubidaConciliacion(archivoEstadoCuenta){
+  const cantidad = state.conciliacionMovimientos.filter(m=>m.archivoEstadoCuenta===archivoEstadoCuenta).length;
+  if(!confirm(`¿Eliminar los ${cantidad} movimiento(s) de esta subida? Esta acción no se puede deshacer. Los comprobantes/pagos que ya se hayan creado o vinculado a partir de estos movimientos NO se eliminan — solo se quita el registro de conciliación.`)) return;
+  try{
+    const {error} = await sb.from('conciliacion_movimientos').delete().eq('archivo_estado_cuenta', archivoEstadoCuenta);
+    if(error) throw error;
+    state.conciliacionMovimientos = state.conciliacionMovimientos.filter(m=>m.archivoEstadoCuenta!==archivoEstadoCuenta);
+    refrescarFichaClientePaneles();
+    abrirGestionSubidasConciliacion(fichaClienteId); // re-renderiza el modal con la lista actualizada
+    showToast('Subida eliminada');
+  }catch(err){
+    showToast('Error: ' + err.message, true);
+  }
+}
+
+// Abre un picker para vincular un movimiento a un pago existente. Si el
+// movimiento es un caso ambiguo, lista exactamente sus candidatos (ya
+// filtrados por moneda/dirección/tolerancia). Si es "banco sin sistema"
+// (0 candidatos automáticos), busca entre TODOS los pagos del cliente aún no
+// usados con la misma moneda/dirección — sin tolerancia de monto/fecha,
+// porque acá el usuario está confirmando a mano que sí es el mismo. Solo se
+// usa desde la ficha de cliente (staff). Resuelve siempre contra el estado
+// GLOBAL (conciliarMovimientos ya no toma filtros) — no depende de qué
+// período/banco/moneda tengas seleccionados en pantalla.
+function abrirVincularMovimiento(movimientoId){
+  const mov = state.conciliacionMovimientos.find(m=>m.id===movimientoId);
+  if(!mov) return;
+  const resultado = conciliarMovimientos(mov.clienteId);
+  const ambiguo = resultado.ambiguos.find(a=>a.movimiento.id===movimientoId);
+  const usados = new Set(resultado.conciliados.map(c=>c.pago.id));
+  const candidatos = ambiguo
+    ? ambiguo.candidatos
+    : pagosParaConciliar(mov.clienteId)
+        .filter(p=> !usados.has(p.id) && p.moneda===mov.moneda && p.tipo===mov.tipo)
+        .sort((a,b)=>(b.fechaPago||'').localeCompare(a.fechaPago||''));
+
+  if(candidatos.length===0){
+    showToast('No hay ningún pago registrado del cliente con esa moneda/dirección para vincular manualmente.', true);
+    return;
+  }
+
+  const body = `
+    <div class="form-hint" style="margin-bottom:12px;">
+      Movimiento del banco: <b>${mov.fecha?fmtFecha(mov.fecha):'—'}</b> — ${mov.tipo==='abono'?'Abono':'Cargo'} de <b>${fmtMoney(mov.monto, mov.moneda)}</b>${mov.descripcion?` — ${escapeHtml(mov.descripcion)}`:''}
+    </div>
+    <div style="overflow-x:auto;"><table>
+      <thead><tr><th>Fecha</th><th class="num">Monto</th><th>Comprobante</th><th></th></tr></thead>
+      <tbody>${candidatos.map(p=>`<tr>
+        <td class="cell-muted">${p.fechaPago?fmtFecha(p.fechaPago):'—'}</td>
+        <td class="num">${fmtMoney(p.monto, p.moneda)}</td>
+        <td class="cell-muted">${escapeHtml(p.comprobanteLabel)||'—'}</td>
+        <td><button class="btn btn-teal btn-sm" onclick="vincularMovimientoManual('${movimientoId}','${p.id}')">Vincular</button></td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+  `;
+  const foot = `<button class="btn btn-outline" onclick="closeModal()">Cancelar</button>`;
+  openModal(ambiguo ? 'Elegir el pago correcto' : 'Vincular a un pago existente', body, foot);
+}
+
+async function vincularMovimientoManual(movimientoId, pagoId){
+  try{
+    const {error} = await sb.from('conciliacion_movimientos').update({pago_id: pagoId, estado: 'conciliado'}).eq('id', movimientoId);
+    if(error) throw error;
+    const mov = state.conciliacionMovimientos.find(m=>m.id===movimientoId);
+    if(mov){ mov.pagoId = pagoId; mov.estado = 'conciliado'; }
+    closeModal();
+    refrescarFichaClientePaneles();
+    showToast('Movimiento vinculado');
+  }catch(err){
+    showToast('Error vinculando: ' + err.message, true);
+  }
+}
+
+async function ignorarMovimiento(movimientoId){
+  if(!confirm('¿Marcar este movimiento como ignorado? No corresponde a nada del negocio del cliente (ej. comisión bancaria) y dejará de aparecer como pendiente.')) return;
+  try{
+    const {error} = await sb.from('conciliacion_movimientos').update({estado: 'ignorado', pago_id: null}).eq('id', movimientoId);
+    if(error) throw error;
+    const mov = state.conciliacionMovimientos.find(m=>m.id===movimientoId);
+    if(mov){ mov.estado = 'ignorado'; mov.pagoId = null; }
+    refrescarFichaClientePaneles();
+    showToast('Movimiento marcado como ignorado');
+  }catch(err){
+    showToast('Error: ' + err.message, true);
+  }
+}
+
+// Solo aplica a movimientos con una decisión MANUAL persistida (vínculo
+// manual, comprobante creado desde acá, o ignorado) — un match automático no
+// tiene nada que revertir, ver nota al inicio de este módulo.
+async function revertirMovimientoConciliacion(movimientoId){
+  if(!confirm('¿Revertir? El movimiento vuelve a quedar pendiente y se recalculará automáticamente.')) return;
+  try{
+    const {error} = await sb.from('conciliacion_movimientos').update({estado: 'pendiente', pago_id: null}).eq('id', movimientoId);
+    if(error) throw error;
+    const mov = state.conciliacionMovimientos.find(m=>m.id===movimientoId);
+    if(mov){ mov.estado = 'pendiente'; mov.pagoId = null; }
+    refrescarFichaClientePaneles();
+    showToast('Movimiento revertido a pendiente');
+  }catch(err){
+    showToast('Error: ' + err.message, true);
+  }
+}
+
+// Crea un pago por el neto completo del comprobante recién creado, con fecha
+// = fecha del movimiento bancario y sin archivo (el sustento es el propio
+// movimiento) — reutiliza recalcularEstadoLocalComprobante en vez de
+// reimplementar el cálculo de estado. Luego vincula el movimiento.
+async function crearPagoVinculadoAMovimiento(tipo, comprobanteId, monto, fechaPago, movimientoId){
+  const payload = {
+    archivo_url: null,
+    monto: monto,
+    fecha_pago: fechaPago || null,
+    metodo: 'Transferencia',
+    comprobante_compra_id: tipo==='compra' ? comprobanteId : null,
+    comprobante_venta_id: tipo==='venta' ? comprobanteId : null
+  };
+  const {data, error} = await sb.from('pagos').insert(payload).select().single();
+  if(error) throw error;
+  const pago = mapPagoFromDb(data);
+  state.pagos.unshift(pago);
+  recalcularEstadoLocalComprobante(tipo, comprobanteId);
+  const {error: errMov} = await sb.from('conciliacion_movimientos').update({pago_id: pago.id, estado: 'conciliado'}).eq('id', movimientoId);
+  if(errMov) throw errMov;
+  const mov = state.conciliacionMovimientos.find(m=>m.id===movimientoId);
+  if(mov){ mov.pagoId = pago.id; mov.estado = 'conciliado'; }
+}
+
+// La dirección del movimiento ya dice qué modal abrir: cargo (sale dinero) =
+// compra, abono (entra dinero) = venta. Pre-llena fecha/monto/moneda; el
+// resto (proveedor/cliente, tipo, número, concepto, archivo) lo completa el
+// usuario como en cualquier alta normal — el archivo sigue siendo
+// obligatorio, no se relaja esa regla solo por venir de conciliación.
+function fichaConciliacionCrearComprobante(movimientoId){
+  const mov = state.conciliacionMovimientos.find(m=>m.id===movimientoId);
+  if(!mov) return;
+  const tipo = mov.tipo === 'cargo' ? 'compra' : 'venta';
+  if(tipo==='compra'){
+    openComprobanteCompraModal(null, fichaClienteId); // limpia conciliacionVinculoPendiente al abrir
+    conciliacionVinculoPendiente = {movimientoId, tipo};
+    document.getElementById('mCompraFecha').value = mov.fecha || '';
+    document.getElementById('mCompraMonto').value = mov.monto ?? '';
+    document.getElementById('mCompraMoneda').value = mov.moneda || 'PEN';
+    compraRecalcular();
+  } else {
+    openVentaModal(fichaClienteId, null); // limpia conciliacionVinculoPendiente al abrir
+    conciliacionVinculoPendiente = {movimientoId, tipo};
+    document.getElementById('mVentaFecha').value = mov.fecha || '';
+    document.getElementById('mVentaMonto').value = mov.monto ?? '';
+    document.getElementById('mVentaMoneda').value = mov.moneda || 'PEN';
+    ventasRecalcular();
+  }
+}
+
+// Arma y descarga el Excel de conciliación (4 hojas) — lo usan tanto la ficha
+// del cliente (staff) como "Mis Comprobantes" (cliente, exporta su propio
+// detalle aunque la pantalla sea de solo lectura).
+function construirYDescargarExcelConciliacion(clienteNombre, resultado, periodoLabel){
+  const wb = XLSX.utils.book_new();
+  const tipoTxt = t => t==='abono' ? 'Abono' : 'Cargo';
+
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    ['Fecha movimiento', 'Tipo', 'Monto', 'Moneda', 'Descripción (banco)', 'Comprobante (sistema)', 'Origen del match'],
+    ...resultado.conciliados.map(c=>[
+      c.movimiento.fecha||'', tipoTxt(c.movimiento.tipo), c.movimiento.monto, c.movimiento.moneda,
+      c.movimiento.descripcion||'', c.pago.comprobanteLabel||'', c.manual ? 'Manual' : 'Automático'
+    ])
+  ]), 'Conciliados');
+
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    ['Fecha', 'Tipo', 'Monto', 'Moneda', 'Descripción', 'Candidatos posibles'],
+    ...resultado.bancoSinSistema.map(m=>[m.fecha||'', tipoTxt(m.tipo), m.monto, m.moneda, m.descripcion||'', '']),
+    ...resultado.ambiguos.map(a=>[a.movimiento.fecha||'', tipoTxt(a.movimiento.tipo), a.movimiento.monto, a.movimiento.moneda, a.movimiento.descripcion||'', a.candidatos.length])
+  ]), 'Banco sin sistema');
+
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    ['Fecha', 'Tipo', 'Monto', 'Moneda', 'Comprobante'],
+    ...resultado.sistemaSinBanco.map(p=>[p.fechaPago||'', tipoTxt(p.tipo), p.monto, p.moneda, p.comprobanteLabel||''])
+  ]), 'Sistema sin banco');
+
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    ['Fecha', 'Tipo', 'Monto', 'Moneda', 'Descripción'],
+    ...resultado.ignorados.map(m=>[m.fecha||'', tipoTxt(m.tipo), m.monto, m.moneda, m.descripcion||''])
+  ]), 'Ignorados');
+
+  const nombre = sanitizeNombreArchivo(`Conciliacion_${clienteNombre}_${periodoLabel}`, 80) + '.xlsx';
+  XLSX.writeFile(wb, nombre);
+}
+
+// Suma las 5 categorías de un resultado (ya filtrado o no) — usado para
+// decidir si hay algo que mostrar/exportar sin repetir la cuenta en 4 sitios.
+function totalEnResultadoConciliacion(resultado){
+  return resultado.conciliados.length + resultado.ambiguos.length + resultado.bancoSinSistema.length + resultado.sistemaSinBanco.length + resultado.ignorados.length;
+}
+
+function fichaConciliacionExportarExcel(){
+  const clienteId = fichaClienteId;
+  const cliente = state.clientes.find(x=>x.id===clienteId);
+  const resultadoCompleto = conciliarMovimientos(clienteId);
+  const resultado = filtrarResultadoConciliacion(resultadoCompleto, {periodo: fichaClientePeriodo, todos: fichaClienteTodos, banco: fichaConciliacionBanco, moneda: fichaConciliacionMoneda});
+  if(totalEnResultadoConciliacion(resultado)===0){ showToast('No hay movimientos en este período/banco/moneda para exportar', true); return; }
+  const etiquetaPeriodo = periodoParaArchivo(fichaClientePeriodo, fichaClienteTodos) + (fichaConciliacionBanco ? '_' + fichaConciliacionBanco : '') + (fichaConciliacionMoneda ? '_' + fichaConciliacionMoneda : '');
+  construirYDescargarExcelConciliacion(cliente?.nombre || 'cliente', resultado, etiquetaPeriodo);
+}
+
+function exportarMisConciliacionExcel(){
+  const clienteId = miClienteId();
+  const cliente = state.clientes.find(x=>x.id===clienteId);
+  const resultadoCompleto = conciliarMovimientos(clienteId);
+  const resultado = filtrarResultadoConciliacion(resultadoCompleto, {periodo: misComprobantesPeriodo, todos: misComprobantesTodos, banco: misConciliacionBanco, moneda: misConciliacionMoneda});
+  if(totalEnResultadoConciliacion(resultado)===0){ showToast('No hay movimientos en este período/banco/moneda para exportar', true); return; }
+  const etiquetaPeriodo = periodoParaArchivo(misComprobantesPeriodo, misComprobantesTodos) + (misConciliacionBanco ? '_' + misConciliacionBanco : '') + (misConciliacionMoneda ? '_' + misConciliacionMoneda : '');
+  construirYDescargarExcelConciliacion(cliente?.nombre || 'mis-movimientos', resultado, etiquetaPeriodo);
+}
+
+// Render compartido de los 4 grupos (Conciliados / Banco sin sistema /
+// Sistema sin banco / Ignorados). soloLectura:true oculta toda columna y
+// botón de acción (Vincular/Crear comprobante/Ignorar/Revertir) — es lo que
+// diferencia la ficha de cliente (staff) de "Mis Comprobantes" (cliente).
+function conciliacionGruposHtml(resultado, opciones){
+  const soloLectura = !!(opciones && opciones.soloLectura);
+
+  const origenTag = (mov) => {
+    const id = mov.banco || mov.nombreArchivoOriginal;
+    return id ? ` <span class="cell-muted" style="font-size:10px;">(${escapeHtml(id)})</span>` : '';
+  };
+  const accionesPendiente = (movId) => `
+    <button class="btn-ghost btn-sm" onclick="abrirVincularMovimiento('${movId}')">🔗 Vincular</button>
+    <button class="btn-ghost btn-sm" onclick="fichaConciliacionCrearComprobante('${movId}')">➕ Crear comprobante</button>
+    <button class="btn-ghost btn-sm" onclick="ignorarMovimiento('${movId}')">🚫 Ignorar</button>
+  `;
+
+  const filaMov = (mov, notaExtra) => `<tr>
+    <td class="cell-muted">${mov.fecha?fmtFecha(mov.fecha):'—'}</td>
+    <td>${mov.tipo==='abono'?'Abono':'Cargo'}</td>
+    <td class="num">${fmtMoney(mov.monto, mov.moneda)}</td>
+    <td class="cell-muted">${escapeHtml(mov.descripcion)||'—'}${origenTag(mov)}${notaExtra||''}</td>
+    ${soloLectura ? '' : `<td class="row-actions">${accionesPendiente(mov.id)}</td>`}
+  </tr>`;
+
+  const filaPago = (p) => `<tr>
+    <td class="cell-muted">${p.fechaPago?fmtFecha(p.fechaPago):'—'}</td>
+    <td>${p.tipo==='abono'?'Abono':'Cargo'}</td>
+    <td class="num">${fmtMoney(p.monto, p.moneda)}</td>
+    <td class="cell-muted">${escapeHtml(p.comprobanteLabel)||'—'}</td>
+  </tr>`;
+
+  const filaConciliado = (par) => `<tr>
+    <td class="cell-muted">${par.movimiento.fecha?fmtFecha(par.movimiento.fecha):'—'}</td>
+    <td>${par.movimiento.tipo==='abono'?'Abono':'Cargo'}</td>
+    <td class="num">${fmtMoney(par.movimiento.monto, par.movimiento.moneda)}</td>
+    <td class="cell-muted">${escapeHtml(par.movimiento.descripcion)||'—'}${origenTag(par.movimiento)}</td>
+    <td class="cell-muted">${escapeHtml(par.pago.comprobanteLabel)||'—'} ${par.manual ? '<span class="cell-muted">(manual)</span>' : ''}</td>
+    ${soloLectura ? '' : `<td class="row-actions">${par.manual ? `<button class="btn-ghost btn-sm" onclick="revertirMovimientoConciliacion('${par.movimiento.id}')">↺ Revertir</button>` : ''}</td>`}
+  </tr>`;
+
+  const filaIgnorado = (mov) => `<tr>
+    <td class="cell-muted">${mov.fecha?fmtFecha(mov.fecha):'—'}</td>
+    <td>${mov.tipo==='abono'?'Abono':'Cargo'}</td>
+    <td class="num">${fmtMoney(mov.monto, mov.moneda)}</td>
+    <td class="cell-muted">${escapeHtml(mov.descripcion)||'—'}${origenTag(mov)}</td>
+    ${soloLectura ? '' : `<td class="row-actions"><button class="btn-ghost btn-sm" onclick="revertirMovimientoConciliacion('${mov.id}')">↺ Revertir</button></td>`}
+  </tr>`;
+
+  const totalBancoSinSistema = resultado.bancoSinSistema.length + resultado.ambiguos.length;
+  const thAcciones = soloLectura ? '' : '<th></th>';
+
+  return `
+    <div class="form-section-title">✅ Conciliados (${resultado.conciliados.length})</div>
+    ${resultado.conciliados.length===0 ? '<div class="cell-muted" style="margin-bottom:14px;">Ningún movimiento coincidió todavía.</div>' : `
+    <div style="overflow-x:auto; margin-bottom:14px;"><table>
+      <thead><tr><th>Fecha</th><th>Tipo</th><th class="num">Monto</th><th>Movimiento (banco)</th><th>Comprobante (sistema)</th>${thAcciones}</tr></thead>
+      <tbody>${resultado.conciliados.map(filaConciliado).join('')}</tbody>
+    </table></div>`}
+
+    <div class="form-section-title">🏦 En el banco pero no en el sistema (${totalBancoSinSistema})</div>
+    ${totalBancoSinSistema===0 ? '<div class="cell-muted" style="margin-bottom:14px;">Todos los movimientos del banco tienen su comprobante registrado.</div>' : `
+    <div style="overflow-x:auto; margin-bottom:14px;"><table>
+      <thead><tr><th>Fecha</th><th>Tipo</th><th class="num">Monto</th><th>Descripción</th>${thAcciones}</tr></thead>
+      <tbody>
+        ${resultado.bancoSinSistema.map(m=>filaMov(m)).join('')}
+        ${resultado.ambiguos.map(a=>filaMov(a.movimiento, ` <span class="badge badge-parcial" style="margin-left:6px;"><span class="badge-dot"></span>${a.candidatos.length} posibles coincidencias</span>`)).join('')}
+      </tbody>
+    </table></div>`}
+
+    <div class="form-section-title">🧾 En el sistema pero no en el banco (${resultado.sistemaSinBanco.length})</div>
+    <div class="form-hint" style="margin-top:-8px; margin-bottom:10px;">Filtrado por período y moneda — no por banco: un pago registrado en el sistema no sabe de qué cuenta bancaria vino el dinero.</div>
+    ${resultado.sistemaSinBanco.length===0 ? '<div class="cell-muted" style="margin-bottom:14px;">Todos los pagos del período están respaldados en el estado de cuenta.</div>' : `
+    <div style="overflow-x:auto; margin-bottom:14px;"><table>
+      <thead><tr><th>Fecha</th><th>Tipo</th><th class="num">Monto</th><th>Comprobante</th></tr></thead>
+      <tbody>${resultado.sistemaSinBanco.map(filaPago).join('')}</tbody>
+    </table></div>`}
+
+    ${resultado.ignorados.length>0 ? `
+    <div class="form-section-title">🚫 Ignorados (${resultado.ignorados.length})</div>
+    <div style="overflow-x:auto;"><table>
+      <thead><tr><th>Fecha</th><th>Tipo</th><th class="num">Monto</th><th>Descripción</th>${thAcciones}</tr></thead>
+      <tbody>${resultado.ignorados.map(filaIgnorado).join('')}</tbody>
+    </table></div>` : ''}
+  `;
+}
+
+function fichaConciliacionCambiarBanco(banco){
+  fichaConciliacionBanco = banco || null;
+  refrescarFichaClientePaneles();
+}
+function fichaConciliacionCambiarMoneda(moneda){
+  fichaConciliacionMoneda = moneda || null;
+  refrescarFichaClientePaneles();
+}
+
+function fichaConciliacionHtml(clienteId){
+  const todosMov = state.conciliacionMovimientos.filter(m=>m.clienteId===clienteId);
+  const uploadHtml = `
+    <div class="form-section-title first">Estado de cuenta bancario</div>
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+      <label class="btn btn-outline btn-sm" style="cursor:${fichaConciliacionSubiendo?'default':'pointer'};">
+        📄 Subir estado de cuenta (PDF)
+        <input type="file" accept="application/pdf,image/*" style="display:none;" onchange="subirEstadoCuentaConciliacion(this)" ${fichaConciliacionSubiendo?'disabled':''}>
+      </label>
+      ${fichaConciliacionSubiendo ? '<span class="cell-muted">Leyendo con IA…</span>' : ''}
+      ${todosMov.length>0 ? `<button class="btn btn-outline btn-sm" onclick="fichaConciliacionExportarExcel()">📊 Exportar Excel</button>` : ''}
+      ${todosMov.length>0 ? `<button class="btn btn-outline btn-sm" onclick="abrirGestionSubidasConciliacion('${clienteId}')">⚙️ Gestionar subidas</button>` : ''}
+    </div>
+  `;
+
+  if(todosMov.length===0){
+    return uploadHtml + `<div class="empty-state"><div class="ico">🏦</div><b>Sin estados de cuenta</b>Sube un PDF del estado de cuenta bancario para conciliarlo automáticamente con los pagos registrados.</div>`;
+  }
+
+  const toolbar = periodoToolbarHtml('fichaClienteNavPeriodo', 'fichaClienteToggleTodos', fichaClientePeriodo, fichaClienteTodos, null, null);
+  const selectores = selectoresFiltroConciliacionHtml(clienteId, fichaConciliacionBanco, fichaConciliacionMoneda, 'fichaConciliacionCambiarBanco', 'fichaConciliacionCambiarMoneda');
+  const resultadoCompleto = conciliarMovimientos(clienteId);
+  const resultado = filtrarResultadoConciliacion(resultadoCompleto, {periodo: fichaClientePeriodo, todos: fichaClienteTodos, banco: fichaConciliacionBanco, moneda: fichaConciliacionMoneda});
+  if(totalEnResultadoConciliacion(resultado)===0){
+    return uploadHtml + toolbar + selectores + `<div class="empty-state"><div class="ico">🏦</div><b>Sin movimientos en este período/banco/moneda</b>Prueba "Ver todos", navega a otro mes, o cambia el banco/moneda seleccionados.</div>`;
+  }
+
+  return uploadHtml + toolbar + selectores + conciliacionGruposHtml(resultado, {soloLectura: false});
+}
+
+function misConciliacionCambiarBanco(banco){
+  misConciliacionBanco = banco || null;
+  renderComprobantes();
+}
+function misConciliacionCambiarMoneda(moneda){
+  misConciliacionMoneda = moneda || null;
+  renderComprobantes();
+}
+
+// Vista de solo lectura para el rol cliente, dentro de "Mis Comprobantes".
+// Reutiliza el mismo período compartido con las tablas de compra/venta de esa
+// pantalla (misComprobantesPeriodo/Todos) — no tiene su propio toolbar de
+// período, pero sí sus propios selectores de banco/moneda.
+function misConciliacionHtml(){
+  const clienteId = miClienteId();
+  const todosMov = state.conciliacionMovimientos.filter(m=>m.clienteId===clienteId);
+  if(todosMov.length===0){
+    return `<div class="empty-state"><div class="ico">🏦</div><b>Sin conciliación bancaria todavía</b>Tu contador no ha cargado ningún estado de cuenta bancario para conciliar.</div>`;
+  }
+
+  const exportBtn = `<div style="margin-bottom:14px;"><button class="btn btn-outline btn-sm" onclick="exportarMisConciliacionExcel()">📊 Exportar Excel</button></div>`;
+  const selectores = selectoresFiltroConciliacionHtml(clienteId, misConciliacionBanco, misConciliacionMoneda, 'misConciliacionCambiarBanco', 'misConciliacionCambiarMoneda');
+  const resultadoCompleto = conciliarMovimientos(clienteId);
+  const resultado = filtrarResultadoConciliacion(resultadoCompleto, {periodo: misComprobantesPeriodo, todos: misComprobantesTodos, banco: misConciliacionBanco, moneda: misConciliacionMoneda});
+  if(totalEnResultadoConciliacion(resultado)===0){
+    return exportBtn + selectores + `<div class="empty-state"><div class="ico">🏦</div><b>Sin movimientos en este período/banco/moneda</b>Prueba "Ver todos", navega a otro mes, o cambia el banco/moneda seleccionados.</div>`;
+  }
+
+  return exportBtn + selectores + conciliacionGruposHtml(resultado, {soloLectura: true});
 }
 
 function mmAbrirDesdeCliente(clienteId){
@@ -2589,6 +4962,211 @@ function generarReporteCliente(clienteId){
       <div><span>Total impuestos</span><b>${fmtMoney(totalGeneral)}</b></div>
       <div><span>Total pagado</span><b>${fmtMoney(abonadoGeneral)}</b></div>
       <div><span>Saldo pendiente</span><b style="color:${saldoGeneral>0?'#b91c1c':'#067a5c'}">${fmtMoney(saldoGeneral)}</b></div>
+    </div>
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  if(!w){ showToast('Habilita las ventanas emergentes para generar el reporte', true); return; }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+}
+
+/* ================= MIS IMPUESTOS (rol cliente, solo lectura) =================
+   Vista de solo lectura para el rol cliente. Reutiliza abonado()/saldo()/
+   estadoCuenta() sin modificarlas — el módulo de Impuestos del staff
+   (filaCuenta(), renderCuentasTabla(), todo lo de abajo) no se toca. Esta
+   fila de solo lectura es una función nueva y separada, sin botones de
+   editar/eliminar ni formulario de agregar abono. ---- */
+let misImpuestosExpandedRows = new Set();
+function toggleMisImpuestosAbono(cuentaId){
+  const key = 'mi:'+cuentaId;
+  if(misImpuestosExpandedRows.has(key)) misImpuestosExpandedRows.delete(key);
+  else misImpuestosExpandedRows.add(key);
+  renderMisImpuestos();
+}
+function filaCuentaSoloLectura(c){
+  const est = estadoCuenta(c);
+  const ab = abonado(c);
+  const sal = saldo(c);
+  const abonosOrdenados = (c.abonos||[]).slice().sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const key = 'mi:'+c.id;
+  const isOpen = misImpuestosExpandedRows.has(key);
+  const toggle = abonosOrdenados.length
+    ? ` <button class="toggle-abonos" onclick="toggleMisImpuestosAbono('${c.id}')" title="Ver pagos">${isOpen?'▾':'▸'} ${abonosOrdenados.length}</button>`
+    : '';
+  // Sin columna de tipo: dentro del acordeón agrupado por tipo, repetirlo en
+  // cada fila sería redundante — ya está en la cabecera del grupo.
+  const mainRow = `<tr>
+    <td>${fmtPeriodo(c.periodo)}</td>
+    <td class="cell-muted">${fmtFecha(c.fechaVenc)}</td>
+    <td class="num">${fmtMoney(c.montoTotal)}</td>
+    <td class="num">${fmtMoney(ab)}</td>
+    <td class="num" style="font-weight:700;">${fmtMoney(sal)}</td>
+    <td>${badgeHtml(est)}${toggle}</td>
+  </tr>`;
+  const abonosRow = isOpen
+    ? `<tr class="abonos-row"><td colspan="6"><div class="abonos-wrap"><div class="abonos-list">${
+        abonosOrdenados.map(a=>`<div class="abono-item"><span><span class="d">${fmtFecha(a.fecha)}</span> &nbsp; ${fmtMoney(a.monto)}</span></div>`).join('')
+      }</div></div></td></tr>`
+    : '';
+  return mainRow + abonosRow;
+}
+
+// Acordeón agrupado por tipo de impuesto — mismo patrón visual/CSS que el
+// acordeón del staff (que agrupa por cliente; acá solo hay una empresa, así
+// que el eje que tiene sentido es el tipo). Set de expansión propio, no
+// comparte estado con expandedGrupos del módulo de Impuestos del staff.
+let misImpuestosGruposAbiertos = new Set();
+function toggleMisImpuestosGrupo(tipo){
+  if(misImpuestosGruposAbiertos.has(tipo)) misImpuestosGruposAbiertos.delete(tipo);
+  else misImpuestosGruposAbiertos.add(tipo);
+  renderMisImpuestos();
+}
+function renderMisImpuestos(){
+  const tbodyImp = document.getElementById('tblMisImpuestos');
+  if(!tbodyImp) return;
+
+  // Solo impuestos — los honorarios son información del estudio (lo que el
+  // cliente le debe al contador), no se muestran en este panel a propósito.
+  const misImpuestos = state.cuentas.filter(c=>c.categoria==='impuesto');
+  if(misImpuestos.length===0){
+    tbodyImp.innerHTML = `<tr class="empty-row"><td colspan="6">Todavía no tienes impuestos registrados.</td></tr>`;
+    return;
+  }
+
+  const grupos = {};
+  const ordenTipos = [];
+  misImpuestos.forEach(c=>{
+    if(!grupos[c.tipo]){ grupos[c.tipo] = []; ordenTipos.push(c.tipo); }
+    grupos[c.tipo].push(c);
+  });
+  ordenTipos.forEach(tipo=>{
+    grupos[tipo].sort((a,b)=>(b.periodo||'').localeCompare(a.periodo||''));
+  });
+  ordenTipos.sort((a,b)=>{
+    const oa = state.tiposImpuesto.find(t=>t.nombre===a)?.orden ?? 999;
+    const ob = state.tiposImpuesto.find(t=>t.nombre===b)?.orden ?? 999;
+    return oa - ob || a.localeCompare(b);
+  });
+
+  let html = '';
+  ordenTipos.forEach(tipo=>{
+    const items = grupos[tipo];
+    const isOpen = misImpuestosGruposAbiertos.has(tipo);
+    const saldoGrupo = items.reduce((s,c)=>s+saldo(c),0);
+    const vencidosGrupo = items.filter(c=>estadoCuenta(c)==='vencido').length;
+
+    html += `<tr class="periodo-header-row" onclick="toggleMisImpuestosGrupo('${tipo}')">
+      <td colspan="6">
+        <div class="periodo-header">
+          <span class="periodo-toggle">${isOpen?'▾':'▸'}</span>
+          <span class="periodo-label">${escapeHtml(tipo)}</span>
+          <span class="periodo-meta">${items.length} período(s)${vencidosGrupo>0?` · <span style="color:var(--danger); font-weight:700;">${vencidosGrupo} vencido(s)</span>`:''}</span>
+          <span class="periodo-saldo">${saldoGrupo>0 ? fmtMoney(saldoGrupo)+' pendiente' : 'Todo pagado ✓'}</span>
+        </div>
+      </td>
+    </tr>`;
+    if(isOpen){
+      items.forEach(c=>{ html += filaCuentaSoloLectura(c); });
+    }
+  });
+
+  tbodyImp.innerHTML = html;
+}
+
+function exportarMisImpuestosPdf(){
+  const cliente = state.clientes[0];
+  if(!cliente){ showToast('No se encontró tu empresa asignada.', true); return; }
+  // Solo impuestos — los honorarios son información del estudio, no se
+  // incluyen en el PDF del cliente a propósito.
+  const misImpuestos = state.cuentas.filter(c=>c.categoria==='impuesto');
+  if(misImpuestos.length===0){ showToast('No hay datos para exportar', true); return; }
+
+  const estColores = {pagado:'#067a5c', parcial:'#b45309', pendiente:'#4b5170', vencido:'#b91c1c'};
+
+  // Mismo agrupamiento por tipo que usa la pantalla (renderMisImpuestos) —
+  // el PDF refleja lo que el cliente ve en pantalla, sección por tipo.
+  const grupos = {};
+  const ordenTipos = [];
+  misImpuestos.forEach(c=>{
+    if(!grupos[c.tipo]){ grupos[c.tipo] = []; ordenTipos.push(c.tipo); }
+    grupos[c.tipo].push(c);
+  });
+  ordenTipos.forEach(tipo=>{
+    grupos[tipo].sort((a,b)=>(b.periodo||'').localeCompare(a.periodo||''));
+  });
+  ordenTipos.sort((a,b)=>{
+    const oa = state.tiposImpuesto.find(t=>t.nombre===a)?.orden ?? 999;
+    const ob = state.tiposImpuesto.find(t=>t.nombre===b)?.orden ?? 999;
+    return oa - ob || a.localeCompare(b);
+  });
+
+  const seccionesHtml = ordenTipos.map(tipo=>{
+    const items = grupos[tipo];
+    const totalTipo = items.reduce((s,c)=>s+Number(c.montoTotal||0),0);
+    const abonadoTipo = items.reduce((s,c)=>s+abonado(c),0);
+    const saldoTipo = items.reduce((s,c)=>s+saldo(c),0);
+    const filas = items.map(c=>{
+      const est = estadoCuenta(c);
+      return `<tr>
+        <td>${fmtPeriodo(c.periodo)}</td>
+        <td>${fmtFecha(c.fechaVenc)}</td>
+        <td style="text-align:right;">${fmtMoney(c.montoTotal)}</td>
+        <td style="text-align:right;">${fmtMoney(abonado(c))}</td>
+        <td style="text-align:right; font-weight:700;">${fmtMoney(saldo(c))}</td>
+        <td><span style="color:${estColores[est]}; font-weight:700;">${estadoLabel(est)}</span></td>
+      </tr>`;
+    }).join('');
+    return `
+    <h2>${escapeHtml(tipo)}</h2>
+    <table>
+      <thead><tr><th>Período</th><th>Vence</th><th style="text-align:right;">Total</th><th style="text-align:right;">Pagado</th><th style="text-align:right;">Saldo</th><th>Estado</th></tr></thead>
+      <tbody>${filas}</tbody>
+      <tfoot>
+        <tr style="background:#f8f7ff;">
+          <td colspan="2" style="font-weight:700;">Subtotal ${escapeHtml(tipo)}</td>
+          <td style="text-align:right; font-weight:700;">${fmtMoney(totalTipo)}</td>
+          <td style="text-align:right; font-weight:700;">${fmtMoney(abonadoTipo)}</td>
+          <td style="text-align:right; font-weight:700; color:${saldoTipo>0?'#b91c1c':'#067a5c'}">${fmtMoney(saldoTipo)}</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>`;
+  }).join('');
+
+  const totalGeneral = misImpuestos.reduce((s,c)=>s+saldo(c),0);
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Mis Impuestos - ${escapeHtml(cliente.nombre)}</title>
+  <style>
+    body{font-family:'Segoe UI',Arial,sans-serif; color:#1f2430; padding:36px; max-width:920px; margin:0 auto;}
+    .header{display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #7c5cff; padding-bottom:16px; margin-bottom:24px;}
+    .header h1{font-size:20px; color:#0f1a3d; margin:0 0 4px 0;}
+    .header p{margin:2px 0; font-size:12.5px; color:#666;}
+    h2{font-size:13.5px; color:#0f1a3d; margin:22px 0 8px 0; padding-bottom:6px; border-bottom:2px solid #7c5cff;}
+    table{width:100%; border-collapse:collapse; font-size:12.5px; margin-bottom:6px;}
+    th{background:#f4f5fb; text-align:left; padding:8px 10px; font-size:10.5px; text-transform:uppercase; color:#666; border-bottom:2px solid #e7e9f2;}
+    td{padding:8px 10px; border-bottom:1px solid #e7e9f2; vertical-align:top;}
+    .totales{display:flex; gap:24px; justify-content:flex-end; margin-top:28px; padding-top:14px; border-top:3px solid #0f1a3d;}
+    .totales div{text-align:right;}
+    .totales b{display:block; font-size:16px; color:#0f1a3d;}
+    .totales span{font-size:11px; color:#666; text-transform:uppercase;}
+    .print-btn{position:fixed; top:20px; right:20px; background:#7c5cff; color:#fff; border:none; padding:10px 18px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;}
+    @media print{ .print-btn{display:none;} body{padding:0;} h2{page-break-after:avoid;} table{page-break-inside:auto;} tr{page-break-inside:avoid;} }
+  </style></head>
+  <body>
+    <button class="print-btn" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+    <div class="header">
+      <div>
+        <h1>Mis Impuestos</h1>
+        <p><b>${escapeHtml(cliente.nombre)}</b></p>
+        <p>RUC: ${escapeHtml(cliente.ruc)||'—'}</p>
+      </div>
+      <div style="text-align:right;"><p>Generado el ${fmtFecha(todayStr())}</p></div>
+    </div>
+    ${seccionesHtml}
+    <div class="totales">
+      <div><span>Saldo pendiente total</span><b style="color:${totalGeneral>0?'#b91c1c':'#067a5c'}">${fmtMoney(totalGeneral)}</b></div>
     </div>
   </body></html>`;
 
@@ -3060,6 +5638,9 @@ async function eliminarTipoImpuesto(id){
 /* ================= RENDER ALL ================= */
 function renderAll(){
   renderDashboard();
+  renderComprobantes();
+  renderMisImpuestos();
+  renderVentas();
   renderAgenda();
   renderClientes();
   renderImpuestos();
@@ -3615,8 +6196,26 @@ document.getElementById('importCronogramaFile').addEventListener('change', (e)=>
 
 /* ================= USUARIOS (solo super_admin) ================= */
 function openInvitarUsuarioModal(){
+  const opcionesClientes = state.clientes.length
+    ? state.clientes.map(c=>`<option value="${c.id}">${escapeHtml(c.nombre)}${c.ruc?' ('+escapeHtml(c.ruc)+')':''}</option>`).join('')
+    : '';
   const body = `
     <div class="form-group"><label>Correo del nuevo usuario</label><input type="email" id="mInvitarEmail" placeholder="colaborador@ejemplo.com"></div>
+    <div class="form-group">
+      <label>Tipo de acceso</label>
+      <select id="mInvitarRol" onchange="onCambioRolInvitar()">
+        <option value="usuario">Personal del estudio (usuario)</option>
+        <option value="cliente">Cliente (solo ve su propia empresa)</option>
+      </select>
+    </div>
+    <div class="form-group" id="mInvitarClienteWrap" style="display:none;">
+      <label>Empresa / cliente</label>
+      <select id="mInvitarCliente">
+        <option value="">Selecciona una empresa...</option>
+        ${opcionesClientes}
+      </select>
+      ${state.clientes.length===0 ? '<span class="form-hint">No hay clientes registrados todavía — crea primero el cliente en la sección "Clientes".</span>' : ''}
+    </div>
     <div class="form-hint">Se crea con la clave temporal <b>123456</b>. En su primer inicio de sesión se le pedirá cambiarla antes de entrar.</div>
   `;
   const foot = `
@@ -3627,9 +6226,17 @@ function openInvitarUsuarioModal(){
 }
 document.getElementById('btnInvitarUsuario').addEventListener('click', openInvitarUsuarioModal);
 
+function onCambioRolInvitar(){
+  const esCliente = document.getElementById('mInvitarRol').value === 'cliente';
+  document.getElementById('mInvitarClienteWrap').style.display = esCliente ? '' : 'none';
+}
+
 async function invitarUsuario(){
   const email = document.getElementById('mInvitarEmail').value.trim();
+  const rol = document.getElementById('mInvitarRol').value;
+  const clienteId = document.getElementById('mInvitarCliente')?.value || '';
   if(!email){ showToast('Ingresa un correo', true); return; }
+  if(rol==='cliente' && !clienteId){ showToast('Selecciona la empresa del cliente', true); return; }
   const btn = document.getElementById('btnConfirmarInvitar');
   btn.disabled = true;
   btn.textContent = 'Creando...';
@@ -3642,14 +6249,18 @@ async function invitarUsuario(){
         'Authorization': `Bearer ${session.access_token}`,
         'apikey': SUPABASE_ANON_KEY
       },
-      body: JSON.stringify({email})
+      body: JSON.stringify({email, rol, cliente_id: rol==='cliente' ? clienteId : undefined})
     });
     const json = await resp.json();
     if(!resp.ok) throw new Error(json.error || 'No se pudo crear el usuario');
     closeModal();
     showToast(`Usuario creado. Clave temporal: 123456`);
-    const {data:usuarios} = await sb.from('perfiles').select('*').order('email');
+    const [{data:usuarios}, {data:asignaciones}] = await Promise.all([
+      sb.from('perfiles').select('*').order('email'),
+      sb.from('asignaciones_clientes').select('*')
+    ]);
     state.usuarios = usuarios || [];
+    state.asignaciones = asignaciones || [];
     renderAll();
   }catch(err){
     showToast('Error: ' + err.message, true);
@@ -3670,9 +6281,11 @@ function renderUsuarios(){
   tbody.innerHTML = state.usuarios.map(u=>{
     const misAsignaciones = state.asignaciones.filter(a=>a.usuario_id===u.user_id);
     const esYo = u.user_id === currentUser.id;
+    const rolLabel = u.rol==='super_admin' ? 'Super admin' : (u.rol==='cliente' ? 'Cliente' : 'Usuario');
+    const rolPill = u.rol==='super_admin' ? 'pill-igv' : (u.rol==='cliente' ? 'pill-r3' : 'pill-otro');
     return `<tr>
       <td class="cell-strong">${escapeHtml(u.email)}${esYo?' <span class="cell-muted">(tú)</span>':''}</td>
-      <td><span class="pill ${u.rol==='super_admin'?'pill-igv':'pill-otro'}">${u.rol==='super_admin'?'Super admin':'Usuario'}</span></td>
+      <td><span class="pill ${rolPill}">${rolLabel}</span></td>
       <td class="cell-muted">${u.rol==='super_admin' ? 'Todos' : (misAsignaciones.length + ' cliente(s)')}</td>
       <td>
         ${u.rol==='super_admin' ? '' : `<button class="btn-ghost btn-sm" onclick="openGestionAccesoModal('${u.user_id}')">Gestionar acceso</button>`}
