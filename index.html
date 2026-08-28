@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Control Contable</title>
+<title>ContaPRO+</title>
 <meta name="description" content="Gestión y control del estudio contable">
 <meta name="theme-color" content="#0f1a3d">
 <link rel="manifest" href="/manifest.json">
@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Control Contable">
+<meta name="apple-mobile-web-app-title" content="ContaPRO+">
 <meta name="mobile-web-app-capable" content="yes">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -61,7 +61,7 @@
     width:36px;height:36px;border-radius:10px;
     background:linear-gradient(135deg, var(--violet), var(--teal));
     display:flex;align-items:center;justify-content:center;
-    font-weight:700; font-size:15px; color:#fff; flex-shrink:0;
+    font-weight:700; font-size:11.5px; letter-spacing:-.3px; color:#fff; flex-shrink:0;
   }
   .brand-text{line-height:1.15;}
   .brand-text b{font-size:14.5px; letter-spacing:.2px;}
@@ -388,6 +388,51 @@
   .config-note code{background:var(--neutral-bg); padding:2px 6px; border-radius:5px; font-size:12px; color:var(--navy);}
   .loading-screen{min-height:100vh; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:14px;}
 
+  /* ---------- Login (#authScreen) — rediseño oscuro "premium/tech" exclusivo
+     de esta pantalla. Todo va con el selector #authScreen (más específico
+     que .auth-screen/.auth-card solas) para no afectar #configScreen ni
+     #changePasswordScreen, que comparten esas mismas clases. ---------- */
+  #authScreen{
+    background: radial-gradient(circle at 28% 18%, #2f1c57 0%, #150a2e 45%, #060309 80%, #000 100%);
+  }
+  #authScreen .auth-card{
+    background: rgba(255,255,255,.055);
+    border: 1px solid rgba(255,255,255,.09);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 25px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.03) inset;
+  }
+  .login-badge-wrap{display:flex; justify-content:center; margin-bottom:16px;}
+  .login-badge{
+    width:64px; height:64px; border-radius:50%;
+    background:linear-gradient(150deg, #a988ff, #6d3ff2 55%, #3d1f96);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:21px; letter-spacing:-.5px; color:#fff;
+    box-shadow:
+      0 -6px 12px rgba(0,0,0,.35) inset,
+      0 4px 10px rgba(255,255,255,.28) inset,
+      0 0 0 1px rgba(255,255,255,.14) inset,
+      0 0 36px 4px rgba(155,123,255,.55),
+      0 10px 26px rgba(0,0,0,.5);
+  }
+  .login-brand-name{text-align:center; color:#fff; font-size:19px; font-weight:800; letter-spacing:.2px; margin-bottom:22px;}
+  #authScreen .auth-card h2{color:#e7e6f7;}
+  #authScreen .form-group label{color:#c2c2df;}
+  #authScreen .form-group input{
+    background:rgba(255,255,255,.055); border:1px solid rgba(255,255,255,.14); color:#fff;
+  }
+  #authScreen .form-group input::placeholder{color:#84849f;}
+  #authScreen .form-group input:focus{border-color:var(--violet-light); outline:none; box-shadow:0 0 0 3px rgba(124,92,255,.28);}
+  #authScreen .auth-error{background:rgba(239,68,68,.16); color:#ffabab; border:1px solid rgba(239,68,68,.3);}
+  #authScreen .auth-info{background:rgba(20,184,166,.16); color:#8fefe0; border:1px solid rgba(20,184,166,.3);}
+  #authScreen .auth-toggle{color:#9d9dc0;}
+  #authScreen .auth-toggle button{color:#bda6ff;}
+  #authScreen #btnAuthSubmit{
+    background:linear-gradient(135deg, var(--violet), #6b3ff5);
+    box-shadow:0 10px 26px rgba(124,92,255,.45);
+    letter-spacing:.2px;
+  }
+
   .alert-banner{
     display:flex; align-items:center; gap:12px; padding:14px 18px; border-radius:12px;
     margin-bottom:20px; font-size:13.5px; font-weight:600;
@@ -468,8 +513,8 @@
 <div class="auth-screen" id="configScreen" style="display:none;">
   <div class="auth-card" style="max-width:460px;">
     <div class="brand" style="justify-content:center;">
-      <div class="brand-badge">EC</div>
-      <div class="brand-text"><b>Control Contable</b><span>Configuración inicial</span></div>
+      <div class="brand-badge">CP+</div>
+      <div class="brand-text"><b>ContaPRO+</b><span>Configuración inicial</span></div>
     </div>
     <h2>⚙️ Falta conectar tu proyecto de Supabase</h2>
     <p class="config-note">
@@ -480,19 +525,24 @@
   </div>
 </div>
 
-<!-- ============ PANTALLA DE LOGIN ============ -->
+<!-- ============ PANTALLA DE LOGIN ============
+     Rediseño oscuro exclusivo de esta pantalla — el resto de la app sigue
+     con la paleta navy/violeta/teal de siempre. Todo el estilo nuevo vive
+     bajo el selector #authScreen (ver CSS), así que #configScreen y
+     #changePasswordScreen (que comparten .auth-screen/.auth-card) no se
+     ven afectados. -->
 <div class="auth-screen" id="authScreen" style="display:none;">
   <div class="auth-card">
-    <div class="brand" style="justify-content:center;">
-      <div class="brand-badge">EC</div>
-      <div class="brand-text"><b>Control Contable</b><span>Gestión &amp; Orden</span></div>
+    <div class="login-badge-wrap">
+      <div class="login-badge">C+</div>
     </div>
+    <div class="login-brand-name">ContaPRO+</div>
     <h2 id="authTitle">Iniciar sesión</h2>
     <div class="auth-error" id="authError" style="display:none;"></div>
     <div class="auth-info" id="authInfo" style="display:none;"></div>
     <div class="form-group"><label>Correo</label><input type="email" id="authEmail" placeholder="tucorreo@ejemplo.com"></div>
     <div class="form-group"><label>Contraseña</label><input type="password" id="authPassword" placeholder="••••••••"></div>
-    <button class="btn btn-primary btn-block" id="btnAuthSubmit">Iniciar sesión</button>
+    <button class="btn btn-primary btn-block" id="btnAuthSubmit">Acceder →</button>
     <div class="auth-toggle" id="authToggleWrap" style="display:none;">
       <span id="authToggleText">¿No tienes cuenta?</span>
       <button id="btnAuthToggle">Crear cuenta</button>
@@ -504,8 +554,8 @@
 <div class="auth-screen" id="changePasswordScreen" style="display:none;">
   <div class="auth-card">
     <div class="brand" style="justify-content:center;">
-      <div class="brand-badge">EC</div>
-      <div class="brand-text"><b>Control Contable</b><span>Primer ingreso</span></div>
+      <div class="brand-badge">CP+</div>
+      <div class="brand-text"><b>ContaPRO+</b><span>Primer ingreso</span></div>
     </div>
     <h2>🔑 Crea tu nueva contraseña</h2>
     <p class="cell-muted" style="text-align:center; margin-top:-8px; margin-bottom:16px; font-size:12.5px;">Ingresaste con la clave temporal. Por seguridad, elige una nueva antes de continuar.</p>
@@ -524,8 +574,8 @@
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
   <aside class="sidebar" id="sidebar">
     <div class="brand">
-      <div class="brand-badge">EC</div>
-      <div class="brand-text"><b>Estudio Contable</b><span>Control &amp; Gestión</span></div>
+      <div class="brand-badge">CP+</div>
+      <div class="brand-text"><b>ContaPRO+</b><span>Control &amp; Gestión</span></div>
     </div>
     <nav id="navMenu">
       <button class="nav-item active" data-tab="dashboard" data-staff-only>
@@ -2225,7 +2275,7 @@ function isConfigured(){
 function setAuthMode(mode){
   authMode = mode;
   document.getElementById('authTitle').textContent = mode==='login' ? 'Iniciar sesión' : 'Crear cuenta';
-  document.getElementById('btnAuthSubmit').textContent = mode==='login' ? 'Iniciar sesión' : 'Crear cuenta';
+  document.getElementById('btnAuthSubmit').textContent = mode==='login' ? 'Acceder →' : 'Crear cuenta';
   document.getElementById('authToggleText').textContent = mode==='login' ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?';
   document.getElementById('btnAuthToggle').textContent = mode==='login' ? 'Crear cuenta' : 'Iniciar sesión';
   document.getElementById('authError').style.display = 'none';
@@ -4935,6 +4985,7 @@ function generarReporteCliente(clienteId){
     .header{display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #7c5cff; padding-bottom:16px; margin-bottom:24px;}
     .header h1{font-size:20px; color:#0f1a3d; margin:0 0 4px 0;}
     .header p{margin:2px 0; font-size:12.5px; color:#666;}
+    .brand-kicker{font-size:10px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:#7c5cff; margin:0 0 6px 0;}
     table{width:100%; border-collapse:collapse; font-size:12.5px; margin-bottom:6px;}
     th{background:#f4f5fb; text-align:left; padding:8px 10px; font-size:10.5px; text-transform:uppercase; color:#666; border-bottom:2px solid #e7e9f2;}
     td{padding:8px 10px; border-bottom:1px solid #e7e9f2; vertical-align:top;}
@@ -4949,6 +5000,7 @@ function generarReporteCliente(clienteId){
     <button class="print-btn" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
     <div class="header">
       <div>
+        <p class="brand-kicker">ContaPRO+</p>
         <h1>Reporte de Impuestos</h1>
         <p><b>${escapeHtml(cliente.nombre)}</b></p>
         <p>RUC: ${escapeHtml(cliente.ruc)||'—'}</p>
@@ -5143,6 +5195,7 @@ function exportarMisImpuestosPdf(){
     .header{display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #7c5cff; padding-bottom:16px; margin-bottom:24px;}
     .header h1{font-size:20px; color:#0f1a3d; margin:0 0 4px 0;}
     .header p{margin:2px 0; font-size:12.5px; color:#666;}
+    .brand-kicker{font-size:10px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:#7c5cff; margin:0 0 6px 0;}
     h2{font-size:13.5px; color:#0f1a3d; margin:22px 0 8px 0; padding-bottom:6px; border-bottom:2px solid #7c5cff;}
     table{width:100%; border-collapse:collapse; font-size:12.5px; margin-bottom:6px;}
     th{background:#f4f5fb; text-align:left; padding:8px 10px; font-size:10.5px; text-transform:uppercase; color:#666; border-bottom:2px solid #e7e9f2;}
@@ -5158,6 +5211,7 @@ function exportarMisImpuestosPdf(){
     <button class="print-btn" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
     <div class="header">
       <div>
+        <p class="brand-kicker">ContaPRO+</p>
         <h1>Mis Impuestos</h1>
         <p><b>${escapeHtml(cliente.nombre)}</b></p>
         <p>RUC: ${escapeHtml(cliente.ruc)||'—'}</p>
@@ -6288,16 +6342,37 @@ function renderUsuarios(){
       <td><span class="pill ${rolPill}">${rolLabel}</span></td>
       <td class="cell-muted">${u.rol==='super_admin' ? 'Todos' : (misAsignaciones.length + ' cliente(s)')}</td>
       <td>
-        ${u.rol==='super_admin' ? '' : `<button class="btn-ghost btn-sm" onclick="openGestionAccesoModal('${u.user_id}')">Gestionar acceso</button>`}
+        ${esYo ? '' : `<button class="btn-ghost btn-sm" onclick="openGestionAccesoModal('${u.user_id}')">Gestionar acceso</button>`}
       </td>
     </tr>`;
   }).join('');
 }
 
-function openGestionAccesoModal(usuarioId){
-  const usuario = state.usuarios.find(u=>u.user_id===usuarioId);
-  if(!usuario) return;
-  const misAsignaciones = new Set(state.asignaciones.filter(a=>a.usuario_id===usuarioId).map(a=>a.cliente_id));
+// Sección dinámica del modal de "Gestionar acceso": cambia según el rol
+// ELEGIDO (no el actual) — usuario -> checkboxes de varios clientes;
+// cliente -> un único selector (un login 'cliente' siempre tiene exactamente
+// una empresa asignada, es un invariante que usa miClienteId() en toda la
+// app); super_admin -> nada que asignar, ve todo automáticamente.
+function seccionAccesoPorRolHtml(rol, misAsignaciones){
+  if(rol === 'super_admin'){
+    return `<div class="form-hint">Un super admin ve todos los clientes automáticamente — no hace falta asignar nada.</div>`;
+  }
+  if(rol === 'cliente'){
+    const actual = misAsignaciones.size===1 ? [...misAsignaciones][0] : '';
+    const opciones = state.clientes.map(c=>`<option value="${c.id}" ${c.id===actual?'selected':''}>${escapeHtml(c.nombre)}${c.ruc?' ('+escapeHtml(c.ruc)+')':''}</option>`).join('');
+    return `
+      <div class="form-group">
+        <label>Empresa / cliente</label>
+        <select id="mAccesoClienteUnico">
+          <option value="">Selecciona una empresa...</option>
+          ${opciones}
+        </select>
+        ${misAsignaciones.size>1 ? '<span class="form-hint">Este usuario tenía varios clientes asignados — al guardar como "Cliente" se conserva solo el que elijas acá.</span>' : ''}
+        ${state.clientes.length===0 ? '<span class="form-hint">No hay clientes registrados todavía — crea primero el cliente en la sección "Clientes".</span>' : ''}
+      </div>
+    `;
+  }
+  // rol === 'usuario'
   const clientesHtml = state.clientes.length
     ? state.clientes.map(c=>`
       <label style="display:flex; align-items:center; gap:8px; padding:6px 0; font-size:13px; border-bottom:1px solid var(--border);">
@@ -6305,43 +6380,121 @@ function openGestionAccesoModal(usuarioId){
         ${escapeHtml(c.nombre)} <span class="cell-muted">(${escapeHtml(c.ruc)||'sin RUC'})</span>
       </label>`).join('')
     : '<p class="cell-muted">No hay clientes registrados todavía.</p>';
+  return `
+    <div class="form-hint" style="margin-bottom:8px;">Marca los clientes que este usuario podrá ver. Nunca verá honorarios, sin importar qué marques aquí.</div>
+    <div id="listaClientesAsignar" style="max-height:280px; overflow-y:auto;">${clientesHtml}</div>
+  `;
+}
+
+function onCambioRolGestionAcceso(usuarioId){
+  const rol = document.getElementById('mAccesoRol').value;
+  const misAsignaciones = new Set(state.asignaciones.filter(a=>a.usuario_id===usuarioId).map(a=>a.cliente_id));
+  document.getElementById('mAccesoSeccionDinamica').innerHTML = seccionAccesoPorRolHtml(rol, misAsignaciones);
+}
+
+function openGestionAccesoModal(usuarioId){
+  const usuario = state.usuarios.find(u=>u.user_id===usuarioId);
+  if(!usuario) return;
+  const misAsignaciones = new Set(state.asignaciones.filter(a=>a.usuario_id===usuarioId).map(a=>a.cliente_id));
 
   const body = `
-    <div class="form-hint" style="margin-bottom:12px;">Marca los clientes que <b>${escapeHtml(usuario.email)}</b> podrá ver. Nunca verá honorarios, sin importar qué marques aquí.</div>
-    <div id="listaClientesAsignar" style="max-height:320px; overflow-y:auto;">${clientesHtml}</div>
+    <div class="form-group">
+      <label>Rol</label>
+      <select id="mAccesoRol" onchange="onCambioRolGestionAcceso('${usuarioId}')">
+        <option value="super_admin" ${usuario.rol==='super_admin'?'selected':''}>Super admin</option>
+        <option value="usuario" ${usuario.rol==='usuario'?'selected':''}>Personal del estudio (usuario)</option>
+        <option value="cliente" ${usuario.rol==='cliente'?'selected':''}>Cliente (solo ve su propia empresa)</option>
+      </select>
+    </div>
+    <div id="mAccesoSeccionDinamica">${seccionAccesoPorRolHtml(usuario.rol, misAsignaciones)}</div>
   `;
   const foot = `
+    <button class="btn-danger-ghost btn-sm" onclick="eliminarUsuario('${usuarioId}')" style="margin-right:auto;">🗑️ Eliminar usuario</button>
     <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-    <button class="btn btn-primary" onclick="guardarAsignaciones('${usuarioId}')">Guardar accesos</button>
+    <button class="btn btn-primary" onclick="guardarGestionAcceso('${usuarioId}')">Guardar cambios</button>
   `;
   openModal('Gestionar acceso — ' + escapeHtml(usuario.email), body, foot);
 }
 
-async function guardarAsignaciones(usuarioId){
-  const checks = document.querySelectorAll('#listaClientesAsignar input[type=checkbox]');
-  const seleccionados = new Set(Array.from(checks).filter(c=>c.checked).map(c=>c.value));
-  const actuales = new Set(state.asignaciones.filter(a=>a.usuario_id===usuarioId).map(a=>a.cliente_id));
-
-  const aAgregar = Array.from(seleccionados).filter(id=>!actuales.has(id));
-  const aQuitar = state.asignaciones.filter(a=>a.usuario_id===usuarioId && !seleccionados.has(a.cliente_id));
-
+async function guardarGestionAcceso(usuarioId){
+  const usuario = state.usuarios.find(u=>u.user_id===usuarioId);
+  if(!usuario) return;
+  const nuevoRol = document.getElementById('mAccesoRol').value;
   try{
-    if(aAgregar.length){
-      const payload = aAgregar.map(clienteId=>({usuario_id: usuarioId, cliente_id: clienteId}));
-      const {data, error} = await sb.from('asignaciones_clientes').insert(payload).select();
+    if(nuevoRol !== usuario.rol){
+      const {error} = await sb.from('perfiles').update({rol: nuevoRol}).eq('user_id', usuarioId);
       if(error) throw error;
-      state.asignaciones.push(...data);
+      usuario.rol = nuevoRol;
     }
-    for(const a of aQuitar){
-      const {error} = await sb.from('asignaciones_clientes').delete().eq('id', a.id);
-      if(error) throw error;
-      state.asignaciones = state.asignaciones.filter(x=>x.id!==a.id);
+
+    if(nuevoRol === 'cliente'){
+      const clienteId = document.getElementById('mAccesoClienteUnico')?.value;
+      if(!clienteId){ showToast('Selecciona la empresa del cliente', true); return; }
+      const actuales = state.asignaciones.filter(a=>a.usuario_id===usuarioId);
+      const yaEsElMismo = actuales.length===1 && actuales[0].cliente_id===clienteId;
+      if(!yaEsElMismo){
+        for(const a of actuales){
+          const {error} = await sb.from('asignaciones_clientes').delete().eq('id', a.id);
+          if(error) throw error;
+        }
+        state.asignaciones = state.asignaciones.filter(a=>a.usuario_id!==usuarioId);
+        const {data, error} = await sb.from('asignaciones_clientes').insert({usuario_id: usuarioId, cliente_id: clienteId}).select().single();
+        if(error) throw error;
+        state.asignaciones.push(data);
+      }
+    } else if(nuevoRol === 'usuario'){
+      const checks = document.querySelectorAll('#listaClientesAsignar input[type=checkbox]');
+      const seleccionados = new Set(Array.from(checks).filter(c=>c.checked).map(c=>c.value));
+      const actuales = new Set(state.asignaciones.filter(a=>a.usuario_id===usuarioId).map(a=>a.cliente_id));
+      const aAgregar = Array.from(seleccionados).filter(id=>!actuales.has(id));
+      const aQuitar = state.asignaciones.filter(a=>a.usuario_id===usuarioId && !seleccionados.has(a.cliente_id));
+      if(aAgregar.length){
+        const payload = aAgregar.map(clienteId=>({usuario_id: usuarioId, cliente_id: clienteId}));
+        const {data, error} = await sb.from('asignaciones_clientes').insert(payload).select();
+        if(error) throw error;
+        state.asignaciones.push(...data);
+      }
+      for(const a of aQuitar){
+        const {error} = await sb.from('asignaciones_clientes').delete().eq('id', a.id);
+        if(error) throw error;
+        state.asignaciones = state.asignaciones.filter(x=>x.id!==a.id);
+      }
     }
+    // nuevoRol === 'super_admin': no se toca asignaciones_clientes — se
+    // dejan como estaban por si algún día lo bajan de rango otra vez.
+
     closeModal();
     renderAll();
-    showToast('Accesos actualizados');
+    showToast('Acceso actualizado');
   }catch(err){
     showToast('Error actualizando accesos: ' + err.message, true);
+  }
+}
+
+async function eliminarUsuario(usuarioId){
+  const usuario = state.usuarios.find(u=>u.user_id===usuarioId);
+  if(!usuario) return;
+  if(!confirm(`¿Eliminar por completo el acceso de ${usuario.email}? Esto borra su cuenta y ya no podrá iniciar sesión. Esta acción no se puede deshacer.`)) return;
+  try{
+    const {data:{session}} = await sb.auth.getSession();
+    const resp = await fetch(`${SUPABASE_URL}/functions/v1/admin-delete-user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+        'apikey': SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({user_id: usuarioId})
+    });
+    const json = await resp.json();
+    if(!resp.ok) throw new Error(json.error || 'No se pudo eliminar el usuario');
+    state.usuarios = state.usuarios.filter(u=>u.user_id!==usuarioId);
+    state.asignaciones = state.asignaciones.filter(a=>a.usuario_id!==usuarioId);
+    closeModal();
+    renderAll();
+    showToast('Usuario eliminado');
+  }catch(err){
+    showToast('Error: ' + err.message, true);
   }
 }
 
@@ -7281,6 +7434,7 @@ function mmExportarPdf(tab){
   .meta b{ color:var(--ink); font-weight:600; }
   h1{ font-size:20px; font-weight:400; letter-spacing:.01em; margin:0 0 6px; color:var(--ink); }
   .kicker{ font-family:Arial, sans-serif; font-size:10.5px; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); margin-bottom:4px; }
+  .brand-mark{ font-family:Arial, sans-serif; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.14em; color:var(--muted); margin-bottom:16px; }
   .baselegal{ font-family:Arial, sans-serif; font-size:11px; color:var(--muted); margin:2px 0 26px; font-style:italic; }
   h2.section{ font-family:Arial, sans-serif; font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--accent); font-weight:700; border-bottom:1px solid var(--line); padding-bottom:5px; margin:28px 0 12px; }
   table{ width:100%; border-collapse:collapse; font-family:Arial, sans-serif; font-size:12.5px; }
@@ -7309,6 +7463,7 @@ function mmExportarPdf(tab){
 </style></head>
 <body>
   <div class="printbar"><button onclick="window.print()">Imprimir / Guardar como PDF</button></div>
+  <div class="brand-mark">ContaPRO+</div>
   <div class="meta">
     <div>${clienteNombre ? `<b>Cliente</b><br>${escapeHtml(clienteNombre)}` : ''}</div>
     <div style="text-align:right;"><b>Fecha de emisión</b><br>${hoy}</div>
