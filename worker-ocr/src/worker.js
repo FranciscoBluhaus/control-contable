@@ -1,7 +1,7 @@
 // ============================================================
 // Worker: control-contable-ocr
-// Recibe un comprobante (imagen o PDF) en base64, lo lee con
-// Gemini y devuelve los campos extraídos como JSON.
+// Recibe un comprobante (imagen o PDF) en base64, lo lee con la API de
+// Anthropic (Claude) y devuelve los campos extraídos como JSON.
 //
 // No distingue compra/venta a propósito: cada comprobante tiene un
 // EMISOR (ruc/razon_social) y normalmente un RECEPTOR
@@ -16,7 +16,7 @@
 // Protección: solo acepta llamadas con un token de sesión válido
 // de Supabase (el mismo access_token del login de Control
 // Contable) — así no queda abierto a cualquiera que descubra la
-// URL y gaste la cuota de Gemini. No hace falta un secreto
+// URL y gaste la cuota de la API. No hace falta un secreto
 // adicional embebido en el HTML público.
 //
 // body esperado: { mimeType: string, data: string (base64) }
@@ -25,7 +25,13 @@
 // Rutas:
 // - POST /              -> extrae un comprobante individual (factura/boleta/etc).
 // - POST /estado-cuenta  -> extrae los movimientos de un estado de cuenta
-//                           bancario (conciliación bancaria, Etapa A).
+//                           bancario (conciliación bancaria).
+//
+// JSON estructurado con Claude: la API de Anthropic no tiene un
+// "responseSchema" nativo como Gemini — el equivalente es "tool use"
+// forzado: se define una herramienta con un input_schema (JSON Schema
+// estándar) y se obliga la llamada con tool_choice — Claude devuelve el
+// resultado ya como objeto en content[].input, sin texto que parsear.
 // ============================================================
 
 const CORS_HEADERS = {
@@ -33,6 +39,12 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'authorization, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
+
+// Modelo por defecto — cambiarlo después es tocar esta única constante (o
+// setear la env var CLAUDE_MODEL sin redesplegar). Haiku porque esto es
+// lectura estructurada de documentos, no una tarea compleja.
+const MODELO_POR_DEFECTO = 'claude-haiku-4-5-20251001';
+const MAX_TOKENS = 8192; // generoso a propósito: un estado de cuenta puede traer 75+ movimientos
 
 const PROMPT_FACTURA = `Eres un asistente que extrae datos de comprobantes de pago peruanos (facturas, boletas, recibos por honorarios, notas de crédito/débito) emitidos según el formato de SUNAT, a partir de una imagen o PDF.
 
@@ -57,34 +69,38 @@ Extrae exactamente estos campos:
 
 No confundas emisor con receptor bajo ninguna circunstancia — son los dos RUCs más importantes del documento y deben quedar en los campos correctos. Si algún dato no aparece o no puedes leerlo con certeza, usa una cadena vacía "" (para texto) o 0 (para números). No inventes datos.`;
 
-const RESPONSE_SCHEMA_FACTURA = {
-  type: 'OBJECT',
-  properties: {
-    ruc: { type: 'STRING' },
-    razon_social: { type: 'STRING' },
-    ruc_receptor: { type: 'STRING' },
-    razon_social_receptor: { type: 'STRING' },
-    fecha_emision: { type: 'STRING' },
-    tipo_comprobante: {
-      type: 'STRING',
-      enum: ['Factura', 'Boleta', 'Recibo por honorarios', 'Nota de crédito', 'Nota de débito', 'Recibo por Arrendamiento', 'Ticket/Boleta de máquina registradora', 'Recibo por Servicios Públicos', 'Guía de Remisión', 'Comprobante de Retención', 'Comprobante de Percepción', 'Otro']
+const HERRAMIENTA_FACTURA = {
+  name: 'extraer_datos_comprobante',
+  description: 'Registra los datos extraídos de un comprobante de pago peruano (factura, boleta, recibo por honorarios, etc.)',
+  input_schema: {
+    type: 'object',
+    properties: {
+      ruc: { type: 'string' },
+      razon_social: { type: 'string' },
+      ruc_receptor: { type: 'string' },
+      razon_social_receptor: { type: 'string' },
+      fecha_emision: { type: 'string' },
+      tipo_comprobante: {
+        type: 'string',
+        enum: ['Factura', 'Boleta', 'Recibo por honorarios', 'Nota de crédito', 'Nota de débito', 'Recibo por Arrendamiento', 'Ticket/Boleta de máquina registradora', 'Recibo por Servicios Públicos', 'Guía de Remisión', 'Comprobante de Retención', 'Comprobante de Percepción', 'Otro']
+      },
+      numero_comprobante: { type: 'string' },
+      concepto: { type: 'string' },
+      monto_total: { type: 'number' },
+      monto_igv: { type: 'number' },
+      monto_retencion: { type: 'number' },
+      porcentaje_retencion: { type: 'number' },
+      moneda: { type: 'string', enum: ['PEN', 'USD'] }
     },
-    numero_comprobante: { type: 'STRING' },
-    concepto: { type: 'STRING' },
-    monto_total: { type: 'NUMBER' },
-    monto_igv: { type: 'NUMBER' },
-    monto_retencion: { type: 'NUMBER' },
-    porcentaje_retencion: { type: 'NUMBER' },
-    moneda: { type: 'STRING', enum: ['PEN', 'USD'] }
-  },
-  required: ['ruc', 'razon_social', 'ruc_receptor', 'razon_social_receptor', 'fecha_emision', 'tipo_comprobante', 'numero_comprobante', 'concepto', 'monto_total', 'monto_igv', 'monto_retencion', 'porcentaje_retencion', 'moneda']
+    required: ['ruc', 'razon_social', 'ruc_receptor', 'razon_social_receptor', 'fecha_emision', 'tipo_comprobante', 'numero_comprobante', 'concepto', 'monto_total', 'monto_igv', 'monto_retencion', 'porcentaje_retencion', 'moneda']
+  }
 };
 
 // ------------------------------------------------------------------
-// Conciliación bancaria (Etapa A): extrae los movimientos de un estado
-// de cuenta bancario (PDF, normalmente varias páginas) en vez de un
-// comprobante individual. Ruta separada porque el prompt/schema no
-// tienen nada que ver con una factura.
+// Conciliación bancaria: extrae los movimientos de un estado de cuenta
+// bancario (PDF, normalmente varias páginas) en vez de un comprobante
+// individual. Ruta separada porque el prompt/herramienta no tienen nada
+// que ver con una factura.
 // ------------------------------------------------------------------
 const PROMPT_ESTADO_CUENTA = `Eres un asistente que extrae movimientos de un estado de cuenta bancario peruano (PDF), a partir de una imagen o PDF que puede tener varias páginas.
 
@@ -101,28 +117,32 @@ Extrae:
 
 No te saltes movimientos ni los resumas — extrae cada línea individual del detalle. Ignora saldos de apertura/cierre y totales, solo interesan los movimientos individuales. Si no puedes leer con certeza algún campo de un movimiento, usa tu mejor estimación razonable; no inventes movimientos que no existen en el documento.`;
 
-const RESPONSE_SCHEMA_ESTADO_CUENTA = {
-  type: 'OBJECT',
-  properties: {
-    banco: { type: 'STRING' },
-    periodo_inicio: { type: 'STRING' },
-    periodo_fin: { type: 'STRING' },
-    movimientos: {
-      type: 'ARRAY',
-      items: {
-        type: 'OBJECT',
-        properties: {
-          fecha: { type: 'STRING' },
-          monto: { type: 'NUMBER' },
-          moneda: { type: 'STRING', enum: ['PEN', 'USD'] },
-          tipo: { type: 'STRING', enum: ['abono', 'cargo'] },
-          descripcion: { type: 'STRING' }
-        },
-        required: ['fecha', 'monto', 'moneda', 'tipo', 'descripcion']
+const HERRAMIENTA_ESTADO_CUENTA = {
+  name: 'extraer_movimientos_estado_cuenta',
+  description: 'Registra el banco, el período y los movimientos individuales extraídos de un estado de cuenta bancario peruano.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      banco: { type: 'string' },
+      periodo_inicio: { type: 'string' },
+      periodo_fin: { type: 'string' },
+      movimientos: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            fecha: { type: 'string' },
+            monto: { type: 'number' },
+            moneda: { type: 'string', enum: ['PEN', 'USD'] },
+            tipo: { type: 'string', enum: ['abono', 'cargo'] },
+            descripcion: { type: 'string' }
+          },
+          required: ['fecha', 'monto', 'moneda', 'tipo', 'descripcion']
+        }
       }
-    }
-  },
-  required: ['banco', 'periodo_inicio', 'periodo_fin', 'movimientos']
+    },
+    required: ['banco', 'periodo_inicio', 'periodo_fin', 'movimientos']
+  }
 };
 
 function jsonResponse(obj, status = 200) {
@@ -132,26 +152,32 @@ function jsonResponse(obj, status = 200) {
   });
 }
 
-// Códigos HTTP transitorios de Gemini (saturación/rate-limit) que vale la
-// pena reintentar — no confundir con errores "de verdad" (archivo corrupto,
+// Códigos HTTP transitorios (saturación/rate-limit) que vale la pena
+// reintentar — no confundir con errores "de verdad" (archivo corrupto,
 // prompt inválido, etc.), esos siguen fallando rápido sin reintentar.
-const CODIGOS_REINTENTABLES = new Set([429, 500, 502, 503, 504]);
+// 529 es el código propio de Anthropic para "Overloaded" (equivalente al
+// 503 que usaba Gemini); se agrega junto a los genéricos de infraestructura.
+const CODIGOS_REINTENTABLES = new Set([429, 500, 502, 503, 529]);
 const ESPERAS_MS = [1000, 2000]; // backoff entre reintentos: 1s, luego 2s (2 reintentos como máximo)
 
-async function llamarGeminiConReintentos(url, geminiBody) {
+async function llamarClaudeConReintentos(env, url, claudeBody) {
   let intento = 0;
   while (true) {
     let resp;
     try {
       resp = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(geminiBody)
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify(claudeBody)
       });
     } catch (e) {
-      // Fallo de red al contactar a Gemini (DNS/conexión) — no es el caso de
-      // saturación que pide reintento, falla rápido igual que antes.
-      throw { mensaje: 'No se pudo contactar a Gemini: ' + e.message };
+      // Fallo de red al contactar a Anthropic (DNS/conexión) — no es el caso
+      // de saturación que pide reintento, falla rápido igual que antes.
+      throw { mensaje: 'No se pudo contactar a Claude: ' + e.message };
     }
 
     if (resp.ok) return resp;
@@ -159,12 +185,53 @@ async function llamarGeminiConReintentos(url, geminiBody) {
     const puedeReintentar = CODIGOS_REINTENTABLES.has(resp.status) && intento < ESPERAS_MS.length;
     if (!puedeReintentar) {
       const errText = await resp.text();
-      throw { mensaje: 'Gemini respondió con error: ' + errText };
+      throw { mensaje: 'Claude respondió con error: ' + errText };
     }
 
     await new Promise(r => setTimeout(r, ESPERAS_MS[intento]));
     intento++;
   }
+}
+
+// Arma el bloque de contenido multimodal correcto según el tipo de archivo
+// — a diferencia del inlineData genérico de Gemini, la API de Anthropic
+// distingue explícitamente entre imágenes (type:'image') y PDFs
+// (type:'document').
+function bloqueArchivo(mimeType, data) {
+  if (mimeType === 'application/pdf') {
+    return { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data } };
+  }
+  return { type: 'image', source: { type: 'base64', media_type: mimeType, data } };
+}
+
+// Llama a Claude con tool use forzado (el equivalente de Anthropic al
+// responseSchema de Gemini) y devuelve directamente el objeto ya
+// estructurado — Claude lo entrega en content[].input, no como texto que
+// haya que parsear.
+async function extraerConClaude(env, { prompt, herramienta, mimeType, data }) {
+  const modelo = env.CLAUDE_MODEL || MODELO_POR_DEFECTO;
+  const url = 'https://api.anthropic.com/v1/messages';
+  const body = {
+    model: modelo,
+    max_tokens: MAX_TOKENS,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'text', text: prompt },
+        bloqueArchivo(mimeType, data)
+      ]
+    }],
+    tools: [herramienta],
+    tool_choice: { type: 'tool', name: herramienta.name }
+  };
+
+  const resp = await llamarClaudeConReintentos(env, url, body);
+  const claudeJson = await resp.json();
+  const bloqueHerramienta = (claudeJson.content || []).find(b => b.type === 'tool_use');
+  if (!bloqueHerramienta) {
+    throw { mensaje: 'Claude no devolvió datos estructurados (posible bloqueo de contenido o archivo ilegible)' };
+  }
+  return bloqueHerramienta.input;
 }
 
 async function esUsuarioValido(request, env) {
@@ -189,8 +256,8 @@ export default {
     if (request.method !== 'POST') {
       return jsonResponse({ ok: false, error: 'Método no permitido' }, 405);
     }
-    if (!env.GEMINI_API_KEY) {
-      return jsonResponse({ ok: false, error: 'Falta configurar el secret GEMINI_API_KEY en el Worker' }, 500);
+    if (!env.ANTHROPIC_API_KEY) {
+      return jsonResponse({ ok: false, error: 'Falta configurar el secret ANTHROPIC_API_KEY en el Worker' }, 500);
     }
     if (!(await esUsuarioValido(request, env))) {
       return jsonResponse({ ok: false, error: 'No autorizado' }, 401);
@@ -209,42 +276,13 @@ export default {
 
     const esEstadoCuenta = new URL(request.url).pathname === '/estado-cuenta';
     const prompt = esEstadoCuenta ? PROMPT_ESTADO_CUENTA : PROMPT_FACTURA;
-    const schema = esEstadoCuenta ? RESPONSE_SCHEMA_ESTADO_CUENTA : RESPONSE_SCHEMA_FACTURA;
-
-    const modelo = env.GEMINI_MODEL || 'gemini-3.6-flash';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${env.GEMINI_API_KEY}`;
-
-    const geminiBody = {
-      contents: [{
-        parts: [
-          { text: prompt },
-          { inlineData: { mimeType, data } }
-        ]
-      }],
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: schema
-      }
-    };
-
-    let geminiResp;
-    try {
-      geminiResp = await llamarGeminiConReintentos(url, geminiBody);
-    } catch (e) {
-      return jsonResponse({ ok: false, error: e.mensaje }, 502);
-    }
-
-    const geminiJson = await geminiResp.json();
-    const textoRespuesta = geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!textoRespuesta) {
-      return jsonResponse({ ok: false, error: 'Gemini no devolvió datos legibles (posible bloqueo de contenido o archivo ilegible)' }, 502);
-    }
+    const herramienta = esEstadoCuenta ? HERRAMIENTA_ESTADO_CUENTA : HERRAMIENTA_FACTURA;
 
     let datos;
     try {
-      datos = JSON.parse(textoRespuesta);
+      datos = await extraerConClaude(env, { prompt, herramienta, mimeType, data });
     } catch (e) {
-      return jsonResponse({ ok: false, error: 'La respuesta de Gemini no fue un JSON válido' }, 502);
+      return jsonResponse({ ok: false, error: e.mensaje }, 502);
     }
 
     return jsonResponse({ ok: true, data: datos });

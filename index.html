@@ -2106,7 +2106,7 @@ function mapConciliacionMovimientoFromDb(row){
     banco: row.banco, nombreArchivoOriginal: row.nombre_archivo_original,
     periodoInicio: row.periodo_inicio, periodoFin: row.periodo_fin,
     fecha: row.fecha, monto: row.monto, moneda: row.moneda || 'PEN', tipo: row.tipo, descripcion: row.descripcion,
-    pagoId: row.pago_id, estado: row.estado, subidoPor: row.subido_por, createdAt: row.created_at
+    pagoId: row.pago_id, abonoId: row.abono_id, estado: row.estado, subidoPor: row.subido_por, createdAt: row.created_at
   };
 }
 
@@ -4146,6 +4146,9 @@ let misConciliacionMoneda = null;
 // modal de compra/venta (ver openComprobanteCompraModal/openVentaModal), así
 // que nunca sobrevive a un flujo distinto ni a un "Cancelar".
 let conciliacionVinculoPendiente = null;
+// Mismo patrón que conciliacionVinculoPendiente, pero para "Crear cuenta de
+// impuesto nueva" desde conciliación — se limpia al abrir openImpuestoModal.
+let conciliacionAbonoVinculoPendiente = null;
 
 const CONCILIACION_TOL_MONTO_FIJA = 1; // S/ o US$ 1, lo que sea mayor frente al %
 const CONCILIACION_TOL_MONTO_PCT = 0.005; // 0.5%
@@ -4310,20 +4313,40 @@ function etiquetaComprobanteParaConciliacion(nombre, tipoComprobante, numeroComp
 
 // pagos no guarda moneda/dirección propia — se derivan del comprobante padre
 // (venta=abono, ya que entra dinero al banco; compra=cargo, sale dinero).
+// Devuelve TODO lo que puede conciliar con un movimiento bancario: pagos de
+// comprobantes de compra/venta (origen:'pago', como siempre) MÁS abonos de
+// impuestos (origen:'abono') — nunca honorarios, quedan fuera desde acá
+// filtrando categoria==='impuesto', ni siquiera llegan al pipeline. Los
+// abonos son siempre PEN (cuentas/abonos no soportan USD) y siempre 'cargo'
+// (pagar un impuesto es dinero que SALE del banco, nunca puede ser un abono
+// entrante). `id` por sí solo no alcanza para distinguir un pago de un
+// abono (son tablas distintas, sus ids no se relacionan) — por eso todo el
+// código que compara/marca "usado" combina origen+id.
 function pagosParaConciliar(clienteId){
   const compraById = new Map(state.comprobantesCompra.filter(c=>c.clienteId===clienteId).map(c=>[c.id, c]));
   const ventaById = new Map(state.comprobantesVenta.filter(v=>v.clienteId===clienteId).map(v=>[v.id, v]));
-  return state.pagos
+  const desdeComprobantes = state.pagos
     .filter(p => (p.comprobanteCompraId && compraById.has(p.comprobanteCompraId)) || (p.comprobanteVentaId && ventaById.has(p.comprobanteVentaId)))
     .map(p=>{
       if(p.comprobanteCompraId){
         const c = compraById.get(p.comprobanteCompraId);
-        return {...p, moneda: c.moneda||'PEN', tipo:'cargo', comprobanteLabel: etiquetaComprobanteParaConciliacion(c.razonSocialProveedor || 'Compra', c.tipoComprobante, c.numeroComprobante), comprobanteTipo:'compra', comprobanteId: c.id};
+        return {...p, origen:'pago', moneda: c.moneda||'PEN', tipo:'cargo', comprobanteLabel: etiquetaComprobanteParaConciliacion(c.razonSocialProveedor || 'Compra', c.tipoComprobante, c.numeroComprobante), origenLabel:'Comprobante', comprobanteTipo:'compra', comprobanteId: c.id};
       }
       const v = ventaById.get(p.comprobanteVentaId);
-      return {...p, moneda: v.moneda||'PEN', tipo:'abono', comprobanteLabel: etiquetaComprobanteParaConciliacion(v.razonSocialClienteFinal || 'Venta', v.tipoComprobante, v.numeroComprobante), comprobanteTipo:'venta', comprobanteId: v.id};
+      return {...p, origen:'pago', moneda: v.moneda||'PEN', tipo:'abono', comprobanteLabel: etiquetaComprobanteParaConciliacion(v.razonSocialClienteFinal || 'Venta', v.tipoComprobante, v.numeroComprobante), origenLabel:'Comprobante', comprobanteTipo:'venta', comprobanteId: v.id};
     });
+
+  const cuentasImpuesto = state.cuentas.filter(c=>c.clienteId===clienteId && c.categoria==='impuesto');
+  const desdeImpuestos = cuentasImpuesto.flatMap(c =>
+    (c.abonos||[]).map(a => ({
+      id: a.id, origen:'abono', moneda:'PEN', tipo:'cargo', monto: Number(a.monto||0), fechaPago: a.fecha,
+      comprobanteLabel: `${c.tipo} — ${fmtPeriodo(c.periodo)}`, origenLabel:'Impuesto', cuentaId: c.id
+    }))
+  );
+
+  return [...desdeComprobantes, ...desdeImpuestos];
 }
+function claveCandidato(p){ return `${p.origen}:${p.id}`; }
 
 // Algoritmo greedy sobre los movimientos aún 'pendiente': busca, entre los
 // pagos del cliente aún no usados, los que compartan moneda+dirección y
@@ -4345,7 +4368,7 @@ function pagosParaConciliar(clienteId){
 function conciliarMovimientos(clienteId){
   const movimientos = state.conciliacionMovimientos.filter(m=>m.clienteId===clienteId);
   const pagos = pagosParaConciliar(clienteId);
-  const pagosById = new Map(pagos.map(p=>[p.id, p]));
+  const pagosById = new Map(pagos.map(p=>[claveCandidato(p), p]));
   const pagosUsados = new Set();
   const conciliados = [];
   const ignorados = [];
@@ -4353,14 +4376,16 @@ function conciliarMovimientos(clienteId){
 
   movimientos.forEach(mov=>{
     if(mov.estado === 'ignorado'){ ignorados.push(mov); return; }
-    if(mov.estado === 'conciliado' && mov.pagoId && pagosById.has(mov.pagoId)){
-      const pago = pagosById.get(mov.pagoId);
-      pagosUsados.add(pago.id);
+    const origenLigado = mov.pagoId ? 'pago' : (mov.abonoId ? 'abono' : null);
+    const idLigado = mov.pagoId || mov.abonoId;
+    if(mov.estado === 'conciliado' && origenLigado && pagosById.has(`${origenLigado}:${idLigado}`)){
+      const pago = pagosById.get(`${origenLigado}:${idLigado}`);
+      pagosUsados.add(claveCandidato(pago));
       conciliados.push({movimiento: mov, pago, manual: true});
       return;
     }
-    // 'pendiente', o un 'conciliado' cuyo pago_id ya no existe (se borró el
-    // pago) — en ese caso raro se re-evalúa como pendiente en vez de romper.
+    // 'pendiente', o un 'conciliado' cuyo pago/abono ya no existe (se borró)
+    // — en ese caso raro se re-evalúa como pendiente en vez de romper.
     pendientes.push(mov);
   });
 
@@ -4368,7 +4393,7 @@ function conciliarMovimientos(clienteId){
   const bancoSinSistema = [];
   pendientes.forEach(mov=>{
     const candidatos = pagos.filter(p=>
-      !pagosUsados.has(p.id) &&
+      !pagosUsados.has(claveCandidato(p)) &&
       p.moneda === mov.moneda &&
       p.tipo === mov.tipo &&
       conciliacionMontoCoincide(mov.monto, p.monto) &&
@@ -4376,7 +4401,7 @@ function conciliarMovimientos(clienteId){
     );
     if(candidatos.length === 1){
       conciliados.push({movimiento: mov, pago: candidatos[0], manual: false});
-      pagosUsados.add(candidatos[0].id);
+      pagosUsados.add(claveCandidato(candidatos[0]));
     } else if(candidatos.length > 1){
       ambiguos.push({movimiento: mov, candidatos});
     } else {
@@ -4391,7 +4416,7 @@ function conciliarMovimientos(clienteId){
   // con qué compararlo), que no quedaron usados por ningún movimiento.
   const monedasConDatosBancarios = new Set(movimientos.map(m=>m.moneda));
   const sistemaSinBanco = pagos.filter(p=>
-    !pagosUsados.has(p.id) &&
+    !pagosUsados.has(claveCandidato(p)) &&
     monedasConDatosBancarios.has(p.moneda)
   );
 
@@ -4591,15 +4616,15 @@ function abrirVincularMovimiento(movimientoId){
   if(!mov) return;
   const resultado = conciliarMovimientos(mov.clienteId);
   const ambiguo = resultado.ambiguos.find(a=>a.movimiento.id===movimientoId);
-  const usados = new Set(resultado.conciliados.map(c=>c.pago.id));
+  const usados = new Set(resultado.conciliados.map(c=>claveCandidato(c.pago)));
   const candidatos = ambiguo
     ? ambiguo.candidatos
     : pagosParaConciliar(mov.clienteId)
-        .filter(p=> !usados.has(p.id) && p.moneda===mov.moneda && p.tipo===mov.tipo)
+        .filter(p=> !usados.has(claveCandidato(p)) && p.moneda===mov.moneda && p.tipo===mov.tipo)
         .sort((a,b)=>(b.fechaPago||'').localeCompare(a.fechaPago||''));
 
   if(candidatos.length===0){
-    showToast('No hay ningún pago registrado del cliente con esa moneda/dirección para vincular manualmente.', true);
+    showToast('No hay ningún pago ni abono de impuesto registrado del cliente con esa moneda/dirección para vincular manualmente.', true);
     return;
   }
 
@@ -4608,12 +4633,12 @@ function abrirVincularMovimiento(movimientoId){
       Movimiento del banco: <b>${mov.fecha?fmtFecha(mov.fecha):'—'}</b> — ${mov.tipo==='abono'?'Abono':'Cargo'} de <b>${fmtMoney(mov.monto, mov.moneda)}</b>${mov.descripcion?` — ${escapeHtml(mov.descripcion)}`:''}
     </div>
     <div style="overflow-x:auto;"><table>
-      <thead><tr><th>Fecha</th><th class="num">Monto</th><th>Comprobante</th><th></th></tr></thead>
+      <thead><tr><th>Fecha</th><th class="num">Monto</th><th>Comprobante / Impuesto</th><th></th></tr></thead>
       <tbody>${candidatos.map(p=>`<tr>
         <td class="cell-muted">${p.fechaPago?fmtFecha(p.fechaPago):'—'}</td>
         <td class="num">${fmtMoney(p.monto, p.moneda)}</td>
-        <td class="cell-muted">${escapeHtml(p.comprobanteLabel)||'—'}</td>
-        <td><button class="btn btn-teal btn-sm" onclick="vincularMovimientoManual('${movimientoId}','${p.id}')">Vincular</button></td>
+        <td class="cell-muted">${escapeHtml(p.comprobanteLabel)||'—'} <span class="cell-muted">(${p.origenLabel})</span></td>
+        <td><button class="btn btn-teal btn-sm" onclick="vincularMovimientoManual('${movimientoId}','${p.origen}','${p.id}')">Vincular</button></td>
       </tr>`).join('')}</tbody>
     </table></div>
   `;
@@ -4621,12 +4646,15 @@ function abrirVincularMovimiento(movimientoId){
   openModal(ambiguo ? 'Elegir el pago correcto' : 'Vincular a un pago existente', body, foot);
 }
 
-async function vincularMovimientoManual(movimientoId, pagoId){
+async function vincularMovimientoManual(movimientoId, origen, id){
   try{
-    const {error} = await sb.from('conciliacion_movimientos').update({pago_id: pagoId, estado: 'conciliado'}).eq('id', movimientoId);
+    const payload = origen==='abono'
+      ? { abono_id: id, pago_id: null, estado: 'conciliado' }
+      : { pago_id: id, abono_id: null, estado: 'conciliado' };
+    const {error} = await sb.from('conciliacion_movimientos').update(payload).eq('id', movimientoId);
     if(error) throw error;
     const mov = state.conciliacionMovimientos.find(m=>m.id===movimientoId);
-    if(mov){ mov.pagoId = pagoId; mov.estado = 'conciliado'; }
+    if(mov){ mov.pagoId = origen==='pago' ? id : null; mov.abonoId = origen==='abono' ? id : null; mov.estado = 'conciliado'; }
     closeModal();
     refrescarFichaClientePaneles();
     showToast('Movimiento vinculado');
@@ -4638,10 +4666,10 @@ async function vincularMovimientoManual(movimientoId, pagoId){
 async function ignorarMovimiento(movimientoId){
   if(!confirm('¿Marcar este movimiento como ignorado? No corresponde a nada del negocio del cliente (ej. comisión bancaria) y dejará de aparecer como pendiente.')) return;
   try{
-    const {error} = await sb.from('conciliacion_movimientos').update({estado: 'ignorado', pago_id: null}).eq('id', movimientoId);
+    const {error} = await sb.from('conciliacion_movimientos').update({estado: 'ignorado', pago_id: null, abono_id: null}).eq('id', movimientoId);
     if(error) throw error;
     const mov = state.conciliacionMovimientos.find(m=>m.id===movimientoId);
-    if(mov){ mov.estado = 'ignorado'; mov.pagoId = null; }
+    if(mov){ mov.estado = 'ignorado'; mov.pagoId = null; mov.abonoId = null; }
     refrescarFichaClientePaneles();
     showToast('Movimiento marcado como ignorado');
   }catch(err){
@@ -4655,10 +4683,10 @@ async function ignorarMovimiento(movimientoId){
 async function revertirMovimientoConciliacion(movimientoId){
   if(!confirm('¿Revertir? El movimiento vuelve a quedar pendiente y se recalculará automáticamente.')) return;
   try{
-    const {error} = await sb.from('conciliacion_movimientos').update({estado: 'pendiente', pago_id: null}).eq('id', movimientoId);
+    const {error} = await sb.from('conciliacion_movimientos').update({estado: 'pendiente', pago_id: null, abono_id: null}).eq('id', movimientoId);
     if(error) throw error;
     const mov = state.conciliacionMovimientos.find(m=>m.id===movimientoId);
-    if(mov){ mov.estado = 'pendiente'; mov.pagoId = null; }
+    if(mov){ mov.estado = 'pendiente'; mov.pagoId = null; mov.abonoId = null; }
     refrescarFichaClientePaneles();
     showToast('Movimiento revertido a pendiente');
   }catch(err){
@@ -4716,6 +4744,86 @@ function fichaConciliacionCrearComprobante(movimientoId){
   }
 }
 
+// Crea un abono por el monto/fecha del movimiento bancario en la cuenta de
+// impuesto indicada — mismo insert que ya hace agregarAbono() en el módulo
+// de Impuestos del staff (no se reimplementa el cálculo de saldo/estado, eso
+// ya lo resuelve saldo()/estadoCuenta() al vuelo, como siempre). Luego
+// vincula el movimiento.
+async function crearAbonoVinculadoAMovimiento(cuentaId, monto, fechaPago, movimientoId){
+  const {data, error} = await sb.from('abonos').insert({cuenta_id: cuentaId, fecha: fechaPago || null, monto}).select().single();
+  if(error) throw error;
+  const cuenta = state.cuentas.find(c=>c.id===cuentaId);
+  if(cuenta){
+    cuenta.abonos = cuenta.abonos || [];
+    cuenta.abonos.push({id: data.id, fecha: data.fecha, monto: data.monto});
+  }
+  const {error: errMov} = await sb.from('conciliacion_movimientos').update({abono_id: data.id, pago_id: null, estado: 'conciliado'}).eq('id', movimientoId);
+  if(errMov) throw errMov;
+  const mov = state.conciliacionMovimientos.find(m=>m.id===movimientoId);
+  if(mov){ mov.abonoId = data.id; mov.pagoId = null; mov.estado = 'conciliado'; }
+}
+
+// Picker para "🧾 Crear abono de impuesto" — solo tiene sentido en
+// movimientos tipo 'cargo' (pagar un impuesto siempre es dinero que SALE del
+// banco). Lista los impuestos pendientes del cliente (reutiliza saldo(), no
+// se recalcula nada nuevo) para vincular directo, o para crear una cuenta
+// nueva si el período/tipo todavía no existe.
+function abrirCrearAbonoImpuesto(movimientoId){
+  const mov = state.conciliacionMovimientos.find(m=>m.id===movimientoId);
+  if(!mov) return;
+  const cuentasPendientes = state.cuentas
+    .filter(c=>c.clienteId===mov.clienteId && c.categoria==='impuesto' && saldo(c)>0)
+    .sort((a,b)=>(b.periodo||'').localeCompare(a.periodo||''));
+
+  const body = `
+    <div class="form-hint" style="margin-bottom:12px;">
+      Movimiento del banco: <b>${mov.fecha?fmtFecha(mov.fecha):'—'}</b> — Cargo de <b>${fmtMoney(mov.monto, mov.moneda)}</b>${mov.descripcion?` — ${escapeHtml(mov.descripcion)}`:''}
+    </div>
+    ${cuentasPendientes.length===0 ? '<div class="cell-muted" style="margin-bottom:14px;">Este cliente no tiene impuestos pendientes registrados.</div>' : `
+    <div style="overflow-x:auto; margin-bottom:14px;"><table>
+      <thead><tr><th>Impuesto</th><th>Período</th><th class="num">Saldo</th><th></th></tr></thead>
+      <tbody>${cuentasPendientes.map(c=>`<tr>
+        <td class="cell-strong">${escapeHtml(c.tipo)}</td>
+        <td class="cell-muted">${fmtPeriodo(c.periodo)}</td>
+        <td class="num">${fmtMoney(saldo(c))}</td>
+        <td><button class="btn btn-teal btn-sm" onclick="vincularAbonoAMovimientoExistente('${movimientoId}','${c.id}')">Vincular acá</button></td>
+      </tr>`).join('')}</tbody>
+    </table></div>`}
+    <button class="btn btn-outline btn-block" onclick="crearCuentaDesdeConciliacion('${movimientoId}')">+ Crear cuenta de impuesto nueva</button>
+  `;
+  const foot = `<button class="btn btn-outline" onclick="closeModal()">Cancelar</button>`;
+  openModal('Vincular a un impuesto', body, foot);
+}
+
+async function vincularAbonoAMovimientoExistente(movimientoId, cuentaId){
+  const mov = state.conciliacionMovimientos.find(m=>m.id===movimientoId);
+  if(!mov) return;
+  try{
+    await crearAbonoVinculadoAMovimiento(cuentaId, mov.monto, mov.fecha, movimientoId);
+    closeModal();
+    renderAll();
+    refrescarFichaClientePaneles();
+    showToast('Abono de impuesto registrado y vinculado');
+  }catch(err){
+    showToast('Error: ' + err.message, true);
+  }
+}
+
+// Abre el modal existente de alta de impuesto (reutilizado, no duplicado),
+// con el cliente de la ficha ya preseleccionado, y deja el vínculo pendiente
+// para que guardarCuenta() cree el abono automáticamente después de crear
+// la cuenta — mismo patrón que conciliacionVinculoPendiente para comprobantes.
+function crearCuentaDesdeConciliacion(movimientoId){
+  const mov = state.conciliacionMovimientos.find(m=>m.id===movimientoId);
+  if(!mov) return;
+  openImpuestoModal(null, fichaClienteId); // limpia conciliacionAbonoVinculoPendiente al abrir
+  conciliacionAbonoVinculoPendiente = {movimientoId};
+  const elMonto = document.getElementById('mMonto');
+  if(elMonto) elMonto.value = mov.monto ?? 0;
+  const elPeriodo = document.getElementById('mPeriodo');
+  if(elPeriodo && mov.fecha) elPeriodo.value = mov.fecha.slice(0, 7); // "YYYY-MM" para <input type="month">
+}
+
 // Arma y descarga el Excel de conciliación (4 hojas) — lo usan tanto la ficha
 // del cliente (staff) como "Mis Comprobantes" (cliente, exporta su propio
 // detalle aunque la pantalla sea de solo lectura).
@@ -4724,10 +4832,10 @@ function construirYDescargarExcelConciliacion(clienteNombre, resultado, periodoL
   const tipoTxt = t => t==='abono' ? 'Abono' : 'Cargo';
 
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-    ['Fecha movimiento', 'Tipo', 'Monto', 'Moneda', 'Descripción (banco)', 'Comprobante (sistema)', 'Origen del match'],
+    ['Fecha movimiento', 'Tipo', 'Monto', 'Moneda', 'Descripción (banco)', 'Origen', 'Comprobante/Impuesto (sistema)', 'Origen del match'],
     ...resultado.conciliados.map(c=>[
       c.movimiento.fecha||'', tipoTxt(c.movimiento.tipo), c.movimiento.monto, c.movimiento.moneda,
-      c.movimiento.descripcion||'', c.pago.comprobanteLabel||'', c.manual ? 'Manual' : 'Automático'
+      c.movimiento.descripcion||'', c.pago.origenLabel, c.pago.comprobanteLabel||'', c.manual ? 'Manual' : 'Automático'
     ])
   ]), 'Conciliados');
 
@@ -4738,8 +4846,8 @@ function construirYDescargarExcelConciliacion(clienteNombre, resultado, periodoL
   ]), 'Banco sin sistema');
 
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-    ['Fecha', 'Tipo', 'Monto', 'Moneda', 'Comprobante'],
-    ...resultado.sistemaSinBanco.map(p=>[p.fechaPago||'', tipoTxt(p.tipo), p.monto, p.moneda, p.comprobanteLabel||''])
+    ['Fecha', 'Tipo', 'Monto', 'Moneda', 'Origen', 'Comprobante/Impuesto'],
+    ...resultado.sistemaSinBanco.map(p=>[p.fechaPago||'', tipoTxt(p.tipo), p.monto, p.moneda, p.origenLabel, p.comprobanteLabel||''])
   ]), 'Sistema sin banco');
 
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
@@ -4788,10 +4896,11 @@ function conciliacionGruposHtml(resultado, opciones){
     const id = mov.banco || mov.nombreArchivoOriginal;
     return id ? ` <span class="cell-muted" style="font-size:10px;">(${escapeHtml(id)})</span>` : '';
   };
-  const accionesPendiente = (movId) => `
-    <button class="btn-ghost btn-sm" onclick="abrirVincularMovimiento('${movId}')">🔗 Vincular</button>
-    <button class="btn-ghost btn-sm" onclick="fichaConciliacionCrearComprobante('${movId}')">➕ Crear comprobante</button>
-    <button class="btn-ghost btn-sm" onclick="ignorarMovimiento('${movId}')">🚫 Ignorar</button>
+  const accionesPendiente = (mov) => `
+    <button class="btn-ghost btn-sm" onclick="abrirVincularMovimiento('${mov.id}')">🔗 Vincular</button>
+    <button class="btn-ghost btn-sm" onclick="fichaConciliacionCrearComprobante('${mov.id}')">➕ Crear comprobante</button>
+    ${mov.tipo==='cargo' ? `<button class="btn-ghost btn-sm" onclick="abrirCrearAbonoImpuesto('${mov.id}')">🧾 Crear abono de impuesto</button>` : ''}
+    <button class="btn-ghost btn-sm" onclick="ignorarMovimiento('${mov.id}')">🚫 Ignorar</button>
   `;
 
   const filaMov = (mov, notaExtra) => `<tr>
@@ -4799,14 +4908,14 @@ function conciliacionGruposHtml(resultado, opciones){
     <td>${mov.tipo==='abono'?'Abono':'Cargo'}</td>
     <td class="num">${fmtMoney(mov.monto, mov.moneda)}</td>
     <td class="cell-muted">${escapeHtml(mov.descripcion)||'—'}${origenTag(mov)}${notaExtra||''}</td>
-    ${soloLectura ? '' : `<td class="row-actions">${accionesPendiente(mov.id)}</td>`}
+    ${soloLectura ? '' : `<td class="row-actions">${accionesPendiente(mov)}</td>`}
   </tr>`;
 
   const filaPago = (p) => `<tr>
     <td class="cell-muted">${p.fechaPago?fmtFecha(p.fechaPago):'—'}</td>
     <td>${p.tipo==='abono'?'Abono':'Cargo'}</td>
     <td class="num">${fmtMoney(p.monto, p.moneda)}</td>
-    <td class="cell-muted">${escapeHtml(p.comprobanteLabel)||'—'}</td>
+    <td class="cell-muted">${escapeHtml(p.comprobanteLabel)||'—'} <span class="cell-muted">(${p.origenLabel})</span></td>
   </tr>`;
 
   const filaConciliado = (par) => `<tr>
@@ -4814,7 +4923,7 @@ function conciliacionGruposHtml(resultado, opciones){
     <td>${par.movimiento.tipo==='abono'?'Abono':'Cargo'}</td>
     <td class="num">${fmtMoney(par.movimiento.monto, par.movimiento.moneda)}</td>
     <td class="cell-muted">${escapeHtml(par.movimiento.descripcion)||'—'}${origenTag(par.movimiento)}</td>
-    <td class="cell-muted">${escapeHtml(par.pago.comprobanteLabel)||'—'} ${par.manual ? '<span class="cell-muted">(manual)</span>' : ''}</td>
+    <td class="cell-muted">${escapeHtml(par.pago.comprobanteLabel)||'—'} <span class="cell-muted">(${par.pago.origenLabel}${par.manual ? ', manual' : ''})</span></td>
     ${soloLectura ? '' : `<td class="row-actions">${par.manual ? `<button class="btn-ghost btn-sm" onclick="revertirMovimientoConciliacion('${par.movimiento.id}')">↺ Revertir</button>` : ''}</td>`}
   </tr>`;
 
@@ -5963,11 +6072,16 @@ async function revealClaveBN(id){
   }
 }
 
-function openImpuestoModal(id){
+function openImpuestoModal(id, clientePreseleccionado){
+  // Cualquier apertura normal de este modal invalida un vínculo pendiente de
+  // "Crear cuenta de impuesto nueva" en conciliación que se haya quedado a
+  // medias (ej. el usuario canceló) — mismo patrón que
+  // openComprobanteCompraModal/openVentaModal con conciliacionVinculoPendiente.
+  conciliacionAbonoVinculoPendiente = null;
   const editing = !!id;
   const tiposActivos = state.tiposImpuesto.filter(t=>t.activo);
   const tipoDefault = editing ? null : (tiposActivos[0]?.nombre || 'IGV');
-  const c = editing ? state.cuentas.find(x=>x.id===id) : {clienteId:'', tipo:tipoDefault, periodo:'', montoTotal:0, fechaVenc:'', notas:'', igvJusto:false};
+  const c = editing ? state.cuentas.find(x=>x.id===id) : {clienteId: clientePreseleccionado || '', tipo:tipoDefault, periodo:'', montoTotal:0, fechaVenc:'', notas:'', igvJusto:false};
   const body = `
     <div class="form-group"><label>Cliente</label><select id="mCliente">${clienteOptionsHtml(c.clienteId)}</select></div>
     <div class="form-row">
@@ -6129,6 +6243,13 @@ async function guardarCuenta(categoria, id){
     payload.retencion_ir = parseFloat(document.getElementById('mRetencionIr')?.value)||0;
     payload.nro_comprobante = document.getElementById('mNroComprobante')?.value.trim() || null;
   }
+  // Se lee y se consume ANTES de guardar — así el flag nunca sobrevive a un
+  // segundo guardado posterior, tenga éxito o no este vínculo (mismo patrón
+  // que conciliacionVinculoPendiente para comprobantes).
+  const vinculoInfo = (!id && categoria==='impuesto' && conciliacionAbonoVinculoPendiente)
+    ? conciliacionAbonoVinculoPendiente : null;
+  conciliacionAbonoVinculoPendiente = null;
+
   try{
     if(id){
       const {error} = await sb.from('cuentas').update(payload).eq('id', id);
@@ -6142,7 +6263,20 @@ async function guardarCuenta(categoria, id){
     }
     closeModal();
     renderAll();
-    showToast('Registro guardado');
+
+    let mensajeExtra = '';
+    if(vinculoInfo){
+      const nuevaCuenta = state.cuentas[state.cuentas.length-1];
+      const mov = state.conciliacionMovimientos.find(m=>m.id===vinculoInfo.movimientoId);
+      try{
+        await crearAbonoVinculadoAMovimiento(nuevaCuenta.id, mov?.monto, mov?.fecha, vinculoInfo.movimientoId);
+        mensajeExtra = ' y vinculado al movimiento bancario';
+      }catch(errVinculo){
+        showToast('La cuenta se creó, pero no se pudo vincular el abono automáticamente: ' + errVinculo.message, true);
+      }
+      refrescarFichaClientePaneles();
+    }
+    showToast('Registro guardado' + mensajeExtra);
   }catch(err){ showToast('Error: '+err.message, true); }
 }
 
