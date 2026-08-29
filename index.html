@@ -3434,14 +3434,49 @@ async function guardarVenta(idParaEditar){
   }
 }
 
+// Usado tanto desde la pestaña "Ventas" (staff, lista global) como desde la
+// ficha de cliente — los pagos/vouchers vinculados se eliminan solos por el
+// `on delete cascade` de la FK, igual que en eliminarCompra; acá solo se
+// avisa antes de proceder y se sincroniza el estado local después.
 async function eliminarVenta(id){
-  if(!confirm('¿Eliminar este comprobante de venta? Esta acción no se puede deshacer.')) return;
+  const pagosLigados = pagosDeComprobante('venta', id);
+  const aviso = pagosLigados.length>0
+    ? `Este comprobante tiene ${pagosLigados.length} pago(s)/voucher(s) vinculado(s) — se eliminarán también. `
+    : '';
+  if(!confirm(`${aviso}¿Eliminar este comprobante de venta? Esta acción no se puede deshacer.`)) return;
   try{
     const {error} = await sb.from('comprobantes_venta').delete().eq('id', id);
     if(error) throw error;
     state.comprobantesVenta = state.comprobantesVenta.filter(v=>v.id!==id);
     state.pagos = state.pagos.filter(p=>p.comprobanteVentaId!==id);
     renderAll();
+    refrescarFichaClientePaneles();
+    showToast('Comprobante eliminado');
+  }catch(err){
+    showToast('Error eliminando: ' + err.message, true);
+  }
+}
+
+// Solo para super_admin/usuario, desde la ficha de cliente — a diferencia
+// del cliente (que solo puede eliminar su propia compra mientras sigue
+// 'pendiente_sustento', ver sql/004), acá no hay restricción de estado: la
+// RLS de comprobantes_compra_delete ya lo permite sin condición para
+// super_admin/usuario. Los pagos vinculados se eliminan solos por el
+// `on delete cascade` de la FK — no hace falta borrarlos a mano, solo
+// avisar antes de proceder y sincronizar el estado local después.
+async function eliminarCompra(id){
+  const pagosLigados = pagosDeComprobante('compra', id);
+  const aviso = pagosLigados.length>0
+    ? `Este comprobante tiene ${pagosLigados.length} pago(s)/sustento(s) vinculado(s) — se eliminarán también. `
+    : '';
+  if(!confirm(`${aviso}¿Eliminar este comprobante de compra? Esta acción no se puede deshacer.`)) return;
+  try{
+    const {error} = await sb.from('comprobantes_compra').delete().eq('id', id);
+    if(error) throw error;
+    state.comprobantesCompra = state.comprobantesCompra.filter(c=>c.id!==id);
+    state.pagos = state.pagos.filter(p=>p.comprobanteCompraId!==id);
+    renderAll();
+    refrescarFichaClientePaneles();
     showToast('Comprobante eliminado');
   }catch(err){
     showToast('Error eliminando: ' + err.message, true);
@@ -3983,6 +4018,7 @@ function fichaComprasHtml(clienteId){
             ${!yaCompleto ? `<button class="btn btn-teal btn-sm" onclick="openPagoModal('compra','${x.id}')">${tienePago?'Registrar más':'Marcar sustentado'}</button>` : ''}
             ${tienePago ? `<button class="btn-ghost btn-sm" onclick="revertirEstadoComprobante('compra','${x.id}')">↺ Revertir</button>` : ''}
             <button class="btn-ghost btn-sm" onclick="editarCompraClick('${x.id}')">Editar</button>
+            <button class="btn-danger-ghost btn-sm" onclick="eliminarCompra('${x.id}')">Eliminar</button>
           </td>
         </tr>${pagosExpandedRowHtml('compra', x.id, 6)}`;
       }).join('')}</tbody>
@@ -4017,6 +4053,7 @@ function fichaVentasHtml(clienteId){
             ${!yaCompleto ? `<button class="btn btn-teal btn-sm" onclick="openPagoModal('venta','${x.id}')">${tienePago?'Registrar más':'Marcar cobrado'}</button>` : ''}
             ${tienePago ? `<button class="btn-ghost btn-sm" onclick="revertirEstadoComprobante('venta','${x.id}')">↺ Revertir</button>` : ''}
             <button class="btn-ghost btn-sm" onclick="editarVentaClick('${x.id}')">Editar</button>
+            <button class="btn-danger-ghost btn-sm" onclick="eliminarVenta('${x.id}')">Eliminar</button>
           </td>
         </tr>${pagosExpandedRowHtml('venta', x.id, 7)}`;
       }).join('')}</tbody>
