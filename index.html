@@ -2449,16 +2449,6 @@ function renderDashboard(){
   const periodoCrit = periodoCritico();
   const sinRegistrar = clientesSinRegistro(periodoCrit);
 
-  // Incluye 'parcial_*' además de 'pendiente_*' — un pago parcial no debe
-  // desaparecer de estos totales, y se suma el SALDO real (no el bruto), para
-  // no sobrestimar lo que falta cuando ya hubo un abono.
-  const ventasPorCobrar = state.comprobantesVenta.filter(v=>v.estado!=='cobrado');
-  const comprasPorPagar = state.comprobantesCompra.filter(c=>c.estado!=='sustentado');
-  // Nunca se mezcla PEN con USD: cada total es por moneda, mostrado en líneas separadas.
-  const totalPorCobrarPorMoneda = agruparSaldoPorMoneda(ventasPorCobrar, 'venta');
-  const totalPorPagarPorMoneda = agruparSaldoPorMoneda(comprasPorPagar, 'compra');
-  const totalDetraccionesPorMoneda = agruparCampoPorMoneda(ventasPorCobrar, 'detraccionMonto');
-
   const bannerHost = document.getElementById('dashboardBanner');
   let bannerHtml = '';
   if(sinRegistrar.length>0){
@@ -2531,21 +2521,6 @@ function renderDashboard(){
       <div class="stat-label">Vencidos</div>
       <div class="stat-value">${vencidos}</div>
       <div class="stat-foot">entre impuestos y honorarios</div>
-    </div>
-    <div class="stat-card c-teal">
-      <div class="stat-label">Por cobrar a clientes</div>
-      <div class="stat-value" style="font-size:17px; line-height:1.4;">${fmtMoneyPorMoneda(totalPorCobrarPorMoneda)}</div>
-      <div class="stat-foot">${ventasPorCobrar.length} venta(s) pendiente(s) de cobro</div>
-    </div>
-    <div class="stat-card c-violet">
-      <div class="stat-label">Por pagar (compras)</div>
-      <div class="stat-value" style="font-size:17px; line-height:1.4;">${fmtMoneyPorMoneda(totalPorPagarPorMoneda)}</div>
-      <div class="stat-foot">${comprasPorPagar.length} compra(s) sin sustento</div>
-    </div>
-    <div class="stat-card c-warning">
-      <div class="stat-label">Detracciones pendientes</div>
-      <div class="stat-value" style="font-size:17px; line-height:1.4;">${fmtMoneyPorMoneda(totalDetraccionesPorMoneda)}</div>
-      <div class="stat-foot">de ventas no cobradas</div>
     </div>
   `;
 
