@@ -790,7 +790,7 @@
         </div>
         <div class="panel" style="padding:0; overflow-x:auto;">
           <table>
-            <thead><tr><th>Empresa / Cliente</th><th>RUC</th><th>Régimen</th><th>Contacto</th><th class="num">Honorario</th><th>Estado</th><th></th></tr></thead>
+            <thead><tr><th>Empresa / Cliente</th><th>RUC</th><th>Régimen</th><th>Contacto</th><th class="num" data-admin-only>Honorario</th><th>Estado</th><th></th></tr></thead>
             <tbody id="tblClientes"></tbody>
           </table>
         </div>
@@ -3532,7 +3532,7 @@ function agItemAutomaticoHtml(e, opts){
       </div>
     </div>
     <div class="ag-item-actions">
-      <button onclick="${verAccion}" title="Ver">↗</button>
+      <button onclick="${verAccion}" title="Ver" ${e.autoTipo==='certificado' ? 'data-admin-only' : ''}>↗</button>
     </div>
   </div>`;
 }
@@ -3814,7 +3814,7 @@ function renderClientes(){
       <td class="cell-muted">${escapeHtml(c.ruc)||'—'}</td>
       <td><span class="pill pill-otro">${escapeHtml(c.regimen)||'—'}</span></td>
       <td class="contact-mini">${c.representanteLegal?('<b>'+escapeHtml(c.representanteLegal)+'</b><br>'):''}${escapeHtml(c.telefono)||''}</td>
-      <td class="num">${fmtMoney(c.honorarioMensual||0)}</td>
+      <td class="num" data-admin-only>${fmtMoney(c.honorarioMensual||0)}</td>
       <td>
         <div class="switch-wrap">
           <span class="${c.activo!==false ? 'dot-active':'dot-inactive'}"></span>
@@ -3824,7 +3824,7 @@ function renderClientes(){
       <td>
         <div class="row-actions">
           <button class="btn-ghost btn-sm" onclick="openFichaCliente('${c.id}')">Ficha</button>
-          <button class="btn-ghost btn-sm" onclick="openClienteModal('${c.id}')">Editar</button>
+          <button class="btn-ghost btn-sm" onclick="openClienteModal('${c.id}')" data-admin-only>Editar</button>
           <button class="btn-danger-ghost btn-sm" data-admin-only onclick="eliminarCliente('${c.id}')">Eliminar</button>
         </div>
       </td>
@@ -3891,7 +3891,7 @@ function openFichaCliente(id){
     <div class="ficha-grid">
       <div class="ficha-item"><b>RUC / DNI</b><span>${escapeHtml(c.ruc)||'—'}</span></div>
       <div class="ficha-item"><b>Régimen</b><span>${escapeHtml(c.regimen)||'—'}</span></div>
-      <div class="ficha-item"><b>Honorario mensual</b><span>${fmtMoney(c.honorarioMensual||0)}</span></div>
+      <div class="ficha-item" data-admin-only><b>Honorario mensual</b><span>${fmtMoney(c.honorarioMensual||0)}</span></div>
       <div class="ficha-item"><b>Estado</b><span>${c.activo!==false?'Activo':'Inactivo'}</span></div>
       <div class="ficha-item" style="grid-column:1/-1;"><b>Grupo cronograma SUNAT</b><span>${GRUPO_LABELS[getGrupoPorRuc(c.ruc, c.buenContribuyente)] || 'No determinado (verifica el RUC)'}</span></div>
     </div>
@@ -3961,7 +3961,7 @@ function openFichaCliente(id){
     <button class="btn btn-outline" onclick="closeModal()">Cerrar</button>
     <button class="btn btn-outline" onclick="closeModal(); mmAbrirDesdeCliente('${id}')">🧮 Calcular multa</button>
     <button class="btn btn-teal" onclick="generarReporteCliente('${id}')">📄 Reporte de impuestos</button>
-    <button class="btn btn-primary" onclick="closeModal(); openClienteModal('${id}')">Editar</button>
+    <button class="btn btn-primary" onclick="closeModal(); openClienteModal('${id}')" data-admin-only>Editar</button>
   `;
   openModal('Ficha de cliente — ' + escapeHtml(c.nombre), body, foot, true);
 }
@@ -5854,6 +5854,12 @@ function openModal(title, bodyHtml, footHtml, wide){
   document.getElementById('modalOverlay').addEventListener('click', e=>{
     if(e.target.id==='modalOverlay') closeModal();
   });
+  // El contenido de la modal se inserta después del último renderAll(), así
+  // que ningún [data-admin-only]/[data-staff-only] que venga dentro del
+  // body/foot recién insertado había sido evaluado todavía — sin esto,
+  // quedaban siempre visibles sin importar el rol (bug real que encontramos
+  // en la ficha de cliente).
+  if(state.miPerfil) applyRoleUI();
 }
 function closeModal(){ document.getElementById('modalRoot').innerHTML = ''; }
 
@@ -6645,8 +6651,19 @@ async function eliminarUsuario(usuarioId){
 }
 
 /* ================= EXPORT / IMPORT ================= */
+// El botón es visible para todo el staff (data-staff-only, no data-admin-only
+// — sigue sirviendo para que "usuario" respalde el resto de la información),
+// pero el honorario mensual y las cuentas de categoria='honorario' son datos
+// privados del estudio: si quien exporta no es super_admin, se excluyen del
+// JSON en vez de ocultar el botón entero.
 document.getElementById('btnExport').addEventListener('click', ()=>{
-  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const esAdmin = state.miPerfil?.rol === 'super_admin';
+  const datosExport = esAdmin ? state : {
+    ...state,
+    clientes: state.clientes.map(({honorarioMensual, ...resto})=>resto),
+    cuentas: state.cuentas.filter(c=>c.categoria!=='honorario')
+  };
+  const blob = new Blob([JSON.stringify(datosExport, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -8510,7 +8527,7 @@ function htRenderCert(){
       <td>${escapeHtml(c.ruc||'—')}</td>
       <td>${txt}</td>
       <td>${badge}</td>
-      <td><button class="btn-ghost btn-sm" onclick="openClienteModal('${c.id}')">✎ Editar</button></td>
+      <td><button class="btn-ghost btn-sm" onclick="openClienteModal('${c.id}')" data-admin-only>✎ Editar</button></td>
     </tr>`).join('');
 
   el.innerHTML = `
