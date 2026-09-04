@@ -1,13 +1,26 @@
 // ============================================================
 // Worker: control-contable-ocr
-// Recibe un comprobante (imagen o PDF) en base64, lo lee con la API de
-// Anthropic (Claude) y devuelve los campos extraídos como JSON.
+// Recibe un comprobante (imagen o PDF) en base64, lo lee con IA y devuelve
+// los campos extraídos como JSON.
 //
-// No distingue compra/venta a propósito: cada comprobante tiene un
-// EMISOR (ruc/razon_social) y normalmente un RECEPTOR
-// (ruc_receptor/razon_social_receptor) — el Worker extrae ambos tal
-// cual aparecen en el documento, sin asumir cuál de los dos es "el
-// cliente" del estudio contable. Esa decisión es del frontend:
+// Proveedor híbrido para la ruta de factura (POST /): las COMPRAS se leen
+// con la API de Anthropic (Claude, de pago) y las VENTAS con la API de
+// Gemini (nivel gratuito) — lo decide el campo `tipo` ('compra'|'venta')
+// del body, no el frontend directamente. Venta NUNCA usa Claude, bajo
+// ningún caso — no hay respaldo entre proveedores. Para compensar (exprimir
+// la cuota gratis antes de rendirse), la ruta de venta usa un calendario de
+// reintentos más largo que el resto (ESPERAS_MS_GEMINI, ver más abajo). Si
+// Gemini agota todos sus reintentos, la extracción simplemente falla como
+// cualquier otro error de OCR — el frontend ya sabe mostrar "no se pudo
+// leer automáticamente, completa los campos a mano". /estado-cuenta
+// (conciliación bancaria) siempre usa Claude, sin excepción — no participa
+// de este switch.
+//
+// No distingue compra/venta para lo que extrae del documento en sí:
+// cada comprobante tiene un EMISOR (ruc/razon_social) y normalmente un
+// RECEPTOR (ruc_receptor/razon_social_receptor) — el Worker extrae ambos
+// tal cual aparecen, sin asumir cuál es "el cliente" del estudio. Esa
+// decisión es del frontend:
 // - Formulario de compra: el proveedor es el EMISOR (ruc/razon_social).
 // - Formulario de venta: el "cliente final" es el RECEPTOR
 //   (ruc_receptor/razon_social_receptor) — el emisor ahí es el propio
@@ -16,10 +29,10 @@
 // Protección: solo acepta llamadas con un token de sesión válido
 // de Supabase (el mismo access_token del login de Control
 // Contable) — así no queda abierto a cualquiera que descubra la
-// URL y gaste la cuota de la API. No hace falta un secreto
+// URL y gaste la cuota de las APIs. No hace falta un secreto
 // adicional embebido en el HTML público.
 //
-// body esperado: { mimeType: string, data: string (base64) }
+// body esperado: { mimeType: string, data: string (base64), tipo?: 'compra'|'venta' }
 // respuesta: { ok: true, data: {...} } | { ok: false, error }
 //
 // Rutas:
@@ -27,11 +40,17 @@
 // - POST /estado-cuenta  -> extrae los movimientos de un estado de cuenta
 //                           bancario (conciliación bancaria).
 //
-// JSON estructurado con Claude: la API de Anthropic no tiene un
-// "responseSchema" nativo como Gemini — el equivalente es "tool use"
-// forzado: se define una herramienta con un input_schema (JSON Schema
-// estándar) y se obliga la llamada con tool_choice — Claude devuelve el
-// resultado ya como objeto en content[].input, sin texto que parsear.
+// JSON estructurado: la API de Anthropic no tiene un "responseSchema"
+// nativo como Gemini — el equivalente es "tool use" forzado: se define una
+// herramienta con un input_schema (JSON Schema estándar) y se obliga la
+// llamada con tool_choice — Claude devuelve el resultado ya como objeto en
+// content[].input, sin texto que parsear. Gemini SÍ tiene responseSchema
+// nativo, pero espera los `type` en MAYÚSCULAS ('STRING' en vez de
+// 'string') — en vez de mantener un segundo schema a mano (con el riesgo
+// de que se desincronice del de Claude cada vez que agreguemos un campo),
+// el schema de Gemini se genera al vuelo desde el mismo input_schema de
+// Claude vía aEsquemaGemini(). El prompt (texto plano) no necesita
+// adaptación, es el mismo para ambos proveedores.
 // ============================================================
 
 const CORS_HEADERS = {
@@ -44,6 +63,7 @@ const CORS_HEADERS = {
 // setear la env var CLAUDE_MODEL sin redesplegar). Haiku porque esto es
 // lectura estructurada de documentos, no una tarea compleja.
 const MODELO_POR_DEFECTO = 'claude-haiku-4-5-20251001';
+const MODELO_GEMINI_POR_DEFECTO = 'gemini-3.6-flash'; // env var GEMINI_MODEL para cambiarlo sin redesplegar
 const MAX_TOKENS = 8192; // generoso a propósito: un estado de cuenta puede traer 75+ movimientos
 
 const PROMPT_FACTURA = `Eres un asistente que extrae datos de comprobantes de pago peruanos (facturas, boletas, recibos por honorarios, notas de crédito/débito) emitidos según el formato de SUNAT, a partir de una imagen o PDF.
@@ -66,6 +86,14 @@ Extrae exactamente estos campos:
 - monto_retencion: el monto de la retención aplicada, si el documento la muestra (busca palabras como "Retención", "Ret.", "IR:", o un monto entre paréntesis restado del total — típico en un Recibo por Honorarios con retención de renta de 4ta categoría). Usa 0 si no aparece ninguna retención.
 - porcentaje_retencion: el porcentaje de esa retención si se indica explícitamente (ej. "8%"). Usa 0 si no aparece.
 - moneda: "PEN" si el documento está en soles (símbolo "S/"), o "USD" si está en dólares (símbolo "US$", "USD", "$", o dice "Dólares"). Si no hay ninguna indicación de moneda, asume "PEN" — es lo normal en un comprobante peruano.
+- fecha_vencimiento: la fecha de vencimiento o de pago, en formato YYYY-MM-DD, SOLO si el documento la indica explícitamente (ej. "Fecha de vencimiento", "Condición de pago: crédito, vence el..."). La mayoría de comprobantes al contado no la muestran — en ese caso usa "", no repitas la fecha de emisión (eso lo decide quien use este dato, no tú).
+- bi_gravada: la base imponible de la parte GRAVADA con IGV (lo que en el comprobante suele aparecer como "Op. Gravada", "Valor de venta" cuando hay IGV, o el monto antes de aplicar el IGV). Usa 0 si el comprobante no tiene ninguna operación gravada (ej. un recibo por honorarios, que no tiene IGV).
+- monto_exonerado: la base de operaciones EXONERADAS de IGV, si el comprobante la discrimina explícitamente (busca "Op. Exonerada"). Usa 0 si no aparece.
+- monto_inafecto: la base de operaciones INAFECTAS de IGV, si el comprobante la discrimina explícitamente (busca "Op. Inafecta"). Usa 0 si no aparece.
+- isc: el Impuesto Selectivo al Consumo, si el comprobante lo discrimina como línea aparte (aplica a combustibles, licores, cigarrillos, vehículos — es poco común). Usa 0 si no aparece.
+- icbper: el Impuesto al Consumo de Bolsas de Plástico ("ICBPER", frecuente en boletas de supermercados/retail, normalmente un monto chico como S/0.50 por bolsa). Usa 0 si no aparece.
+- tipo_cambio: el tipo de cambio (soles por dólar) SOLO si el propio comprobante lo imprime explícitamente (poco común — la mayoría de comprobantes en USD no lo muestran, en ese caso usa ""). No lo calcules ni lo inventes.
+- doc_modificado_fecha_emision, doc_modificado_tipo_cp, doc_modificado_serie, doc_modificado_numero: SOLO cuando tipo_comprobante es "Nota de crédito" o "Nota de débito" — estos documentos SIEMPRE referencian el comprobante original que modifican (es obligatorio por ley que lo impriman, busca "Documento que modifica", "Comprobante afectado", o similar). doc_modificado_tipo_cp usa el mismo criterio de tipo_comprobante (ej. "Factura", "Boleta"). doc_modificado_serie y doc_modificado_numero son la serie y número del documento original, por separado (no juntos como en numero_comprobante). Para cualquier otro tipo de comprobante, deja los 4 campos en "".
 
 No confundas emisor con receptor bajo ninguna circunstancia — son los dos RUCs más importantes del documento y deben quedar en los campos correctos. Si algún dato no aparece o no puedes leerlo con certeza, usa una cadena vacía "" (para texto) o 0 (para números). No inventes datos.`;
 
@@ -90,9 +118,20 @@ const HERRAMIENTA_FACTURA = {
       monto_igv: { type: 'number' },
       monto_retencion: { type: 'number' },
       porcentaje_retencion: { type: 'number' },
-      moneda: { type: 'string', enum: ['PEN', 'USD'] }
+      moneda: { type: 'string', enum: ['PEN', 'USD'] },
+      fecha_vencimiento: { type: 'string' },
+      bi_gravada: { type: 'number' },
+      monto_exonerado: { type: 'number' },
+      monto_inafecto: { type: 'number' },
+      isc: { type: 'number' },
+      icbper: { type: 'number' },
+      tipo_cambio: { type: 'string' },
+      doc_modificado_fecha_emision: { type: 'string' },
+      doc_modificado_tipo_cp: { type: 'string' },
+      doc_modificado_serie: { type: 'string' },
+      doc_modificado_numero: { type: 'string' }
     },
-    required: ['ruc', 'razon_social', 'ruc_receptor', 'razon_social_receptor', 'fecha_emision', 'tipo_comprobante', 'numero_comprobante', 'concepto', 'monto_total', 'monto_igv', 'monto_retencion', 'porcentaje_retencion', 'moneda']
+    required: ['ruc', 'razon_social', 'ruc_receptor', 'razon_social_receptor', 'fecha_emision', 'tipo_comprobante', 'numero_comprobante', 'concepto', 'monto_total', 'monto_igv', 'monto_retencion', 'porcentaje_retencion', 'moneda', 'fecha_vencimiento', 'bi_gravada', 'monto_exonerado', 'monto_inafecto', 'isc', 'icbper', 'tipo_cambio', 'doc_modificado_fecha_emision', 'doc_modificado_tipo_cp', 'doc_modificado_serie', 'doc_modificado_numero']
   }
 };
 
@@ -155,40 +194,41 @@ function jsonResponse(obj, status = 200) {
 // Códigos HTTP transitorios (saturación/rate-limit) que vale la pena
 // reintentar — no confundir con errores "de verdad" (archivo corrupto,
 // prompt inválido, etc.), esos siguen fallando rápido sin reintentar.
-// 529 es el código propio de Anthropic para "Overloaded" (equivalente al
-// 503 que usaba Gemini); se agrega junto a los genéricos de infraestructura.
-const CODIGOS_REINTENTABLES = new Set([429, 500, 502, 503, 529]);
-const ESPERAS_MS = [1000, 2000]; // backoff entre reintentos: 1s, luego 2s (2 reintentos como máximo)
+// Set único para ambos proveedores: 529 es específico de Anthropic
+// ("Overloaded") y 504 más típico de Gemini — incluir el código "ajeno" en
+// cada llamada es inofensivo, simplemente nunca se dispara.
+const CODIGOS_REINTENTABLES = new Set([429, 500, 502, 503, 504, 529]);
+const ESPERAS_MS = [1000, 2000]; // Claude/estado-cuenta: backoff 1s, 2s (2 reintentos = 3 intentos en total)
+// Venta (Gemini) no tiene respaldo a otro proveedor, así que vale la pena
+// exprimir mejor la cuota gratis antes de rendirse — mismo backoff
+// progresivo (duplicando cada vez), pero con más pasos: 1s,2s,4s,8s
+// (4 reintentos = 5 intentos en total).
+const ESPERAS_MS_GEMINI = [1000, 2000, 4000, 8000];
 
-async function llamarClaudeConReintentos(env, url, claudeBody) {
+// Reintentos genéricos, sin nada específico de un proveedor — cada llamador
+// arma su propia URL/headers/body y le pasa un nombre (para el mensaje de
+// error) y su propio calendario de esperas.
+async function llamarConReintentos(nombreProveedor, url, fetchOptions, esperasMs = ESPERAS_MS) {
   let intento = 0;
   while (true) {
     let resp;
     try {
-      resp = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': env.ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01'
-        },
-        body: JSON.stringify(claudeBody)
-      });
+      resp = await fetch(url, fetchOptions);
     } catch (e) {
-      // Fallo de red al contactar a Anthropic (DNS/conexión) — no es el caso
-      // de saturación que pide reintento, falla rápido igual que antes.
-      throw { mensaje: 'No se pudo contactar a Claude: ' + e.message };
+      // Fallo de red al contactar al proveedor (DNS/conexión) — no es el
+      // caso de saturación que pide reintento, falla rápido igual que antes.
+      throw { mensaje: `No se pudo contactar a ${nombreProveedor}: ` + e.message };
     }
 
     if (resp.ok) return resp;
 
-    const puedeReintentar = CODIGOS_REINTENTABLES.has(resp.status) && intento < ESPERAS_MS.length;
+    const puedeReintentar = CODIGOS_REINTENTABLES.has(resp.status) && intento < esperasMs.length;
     if (!puedeReintentar) {
       const errText = await resp.text();
-      throw { mensaje: 'Claude respondió con error: ' + errText };
+      throw { mensaje: `${nombreProveedor} respondió con error: ` + errText };
     }
 
-    await new Promise(r => setTimeout(r, ESPERAS_MS[intento]));
+    await new Promise(r => setTimeout(r, esperasMs[intento]));
     intento++;
   }
 }
@@ -225,7 +265,15 @@ async function extraerConClaude(env, { prompt, herramienta, mimeType, data }) {
     tool_choice: { type: 'tool', name: herramienta.name }
   };
 
-  const resp = await llamarClaudeConReintentos(env, url, body);
+  const resp = await llamarConReintentos('Claude', url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify(body)
+  });
   const claudeJson = await resp.json();
   const bloqueHerramienta = (claudeJson.content || []).find(b => b.type === 'tool_use');
   if (!bloqueHerramienta) {
@@ -233,6 +281,76 @@ async function extraerConClaude(env, { prompt, herramienta, mimeType, data }) {
   }
   return bloqueHerramienta.input;
 }
+
+// Convierte un JSON Schema al estilo Claude (type: 'string'/'object'/...) al
+// responseSchema que espera Gemini (type: 'STRING'/'OBJECT'/... en
+// mayúsculas) — recorre properties/items recursivamente y deja todo lo
+// demás (enum, required, description) intacto. Así el schema de Gemini se
+// genera al vuelo desde el input_schema de Claude en vez de mantenerse a
+// mano por separado: no hay forma de que se desincronicen.
+function aEsquemaGemini(schema) {
+  if (Array.isArray(schema)) return schema.map(aEsquemaGemini);
+  if (schema && typeof schema === 'object') {
+    const out = {};
+    for (const [k, v] of Object.entries(schema)) {
+      out[k] = (k === 'type' && typeof v === 'string') ? v.toUpperCase() : aEsquemaGemini(v);
+    }
+    return out;
+  }
+  return schema;
+}
+
+// Llama a Gemini con responseSchema (su equivalente nativo al tool use
+// forzado de Claude) y devuelve el objeto ya parseado — a diferencia de
+// Claude, Gemini entrega el JSON como texto dentro de la respuesta, no como
+// un bloque estructurado aparte.
+async function extraerConGemini(env, { prompt, herramienta, mimeType, data }) {
+  const modelo = env.GEMINI_MODEL || MODELO_GEMINI_POR_DEFECTO;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${env.GEMINI_API_KEY}`;
+  const body = {
+    contents: [{
+      parts: [
+        { text: prompt },
+        { inlineData: { mimeType, data } }
+      ]
+    }],
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseSchema: aEsquemaGemini(herramienta.input_schema)
+    }
+  };
+
+  const resp = await llamarConReintentos('Gemini', url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  }, ESPERAS_MS_GEMINI);
+  const geminiJson = await resp.json();
+  const textoRespuesta = geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!textoRespuesta) {
+    throw { mensaje: 'Gemini no devolvió datos legibles (posible bloqueo de contenido o archivo ilegible)' };
+  }
+  try {
+    return JSON.parse(textoRespuesta);
+  } catch (e) {
+    throw { mensaje: 'La respuesta de Gemini no fue un JSON válido' };
+  }
+}
+
+// ------------------------------------------------------------------
+// Tipo de cambio oficial SUNAT: NO se consulta automáticamente desde este
+// Worker. Se intentó con Browser Rendering (Puppeteer real, vía un binding
+// MYBROWSER que ya no existe) para esquivar el reCAPTCHA v3 + WAF de
+// e-consulta.sunat.gob.pe, pero se confirmó con logs reales de producción
+// (wrangler tail) que SUNAT bloquea a nivel de red las conexiones desde los
+// datacenters de Cloudflare Browser Rendering — net::ERR_CONNECTION_RESET
+// consistente en cada intento, mientras una prueba aislada hacia otro sitio
+// externo (example.com) funcionó bien desde la misma infraestructura. Es un
+// bloqueo de IP/firewall permanente, no arreglable con reintentos ni con más
+// paciencia. Se abandonó esa vía — la sección "Tipo de Cambio" del frontend
+// ahora solo se llena subiendo el reporte mensual en PDF (SUNAT sí sirve ese
+// PDF a un navegador humano normal, distinto problema) o a mano.
+// ------------------------------------------------------------------
 
 async function esUsuarioValido(request, env) {
   const authHeader = request.headers.get('Authorization') || '';
@@ -256,9 +374,6 @@ export default {
     if (request.method !== 'POST') {
       return jsonResponse({ ok: false, error: 'Método no permitido' }, 405);
     }
-    if (!env.ANTHROPIC_API_KEY) {
-      return jsonResponse({ ok: false, error: 'Falta configurar el secret ANTHROPIC_API_KEY en el Worker' }, 500);
-    }
     if (!(await esUsuarioValido(request, env))) {
       return jsonResponse({ ok: false, error: 'No autorizado' }, 401);
     }
@@ -269,7 +384,8 @@ export default {
     } catch (e) {
       return jsonResponse({ ok: false, error: 'JSON inválido' }, 400);
     }
-    const { mimeType, data } = body || {};
+
+    const { mimeType, data, tipo } = body || {};
     if (!mimeType || !data) {
       return jsonResponse({ ok: false, error: 'Faltan mimeType o data (base64) del archivo' }, 400);
     }
@@ -278,10 +394,29 @@ export default {
     const prompt = esEstadoCuenta ? PROMPT_ESTADO_CUENTA : PROMPT_FACTURA;
     const herramienta = esEstadoCuenta ? HERRAMIENTA_ESTADO_CUENTA : HERRAMIENTA_FACTURA;
 
+    // Solo la ruta de factura distingue proveedor por tipo de operación —
+    // compra usa Claude, venta usa Gemini, sin respaldo entre uno y otro
+    // bajo ningún caso. /estado-cuenta ignora `tipo` y siempre usa Claude.
+    const usarGemini = !esEstadoCuenta && tipo === 'venta';
+    if (usarGemini) {
+      if (!env.GEMINI_API_KEY) {
+        return jsonResponse({ ok: false, error: 'Falta configurar el secret GEMINI_API_KEY en el Worker' }, 500);
+      }
+    } else if (!env.ANTHROPIC_API_KEY) {
+      return jsonResponse({ ok: false, error: 'Falta configurar el secret ANTHROPIC_API_KEY en el Worker' }, 500);
+    }
+
     let datos;
     try {
-      datos = await extraerConClaude(env, { prompt, herramienta, mimeType, data });
+      datos = usarGemini
+        ? await extraerConGemini(env, { prompt, herramienta, mimeType, data })
+        : await extraerConClaude(env, { prompt, herramienta, mimeType, data });
     } catch (e) {
+      // Si Gemini agota todos sus reintentos (ESPERAS_MS_GEMINI), esto
+      // también captura ese caso — venta no tiene a qué proveedor caer, así
+      // que falla igual que cualquier otro error de OCR. El frontend ya
+      // sabe mostrar "no se pudo leer automáticamente, completa los campos
+      // a mano" para cualquier error de esta ruta.
       return jsonResponse({ ok: false, error: e.mensaje }, 502);
     }
 

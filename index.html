@@ -145,13 +145,13 @@
   #view-multas .card h2, #view-herramientas .card h2{font-size:14.5px; margin:0 0 4px; color:var(--navy); display:flex; align-items:center; gap:8px;}
   #view-multas .card .desc, #view-herramientas .card .desc{font-size:12.5px; color:var(--muted); margin:0 0 16px;}
 
-  #view-multas .tabs, #view-herramientas .tabs{display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap;}
-  #view-multas .tab, #view-herramientas .tab{
+  #view-multas .tabs, #view-herramientas .tabs, #view-sire .tabs{display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap;}
+  #view-multas .tab, #view-herramientas .tab, #view-sire .tab{
     padding:10px 16px; border-radius:10px; border:1px solid var(--border); background:#fff;
     font-size:13px; font-weight:600; color:var(--muted); cursor:pointer; transition:.15s;
   }
-  #view-multas .tab.active, #view-herramientas .tab.active{background:var(--navy); color:#fff; border-color:var(--navy);}
-  #view-multas .tab:hover:not(.active), #view-herramientas .tab:hover:not(.active){background:var(--neutral-bg);}
+  #view-multas .tab.active, #view-herramientas .tab.active, #view-sire .tab.active{background:var(--navy); color:#fff; border-color:var(--navy);}
+  #view-multas .tab:hover:not(.active), #view-herramientas .tab:hover:not(.active), #view-sire .tab:hover:not(.active){background:var(--neutral-bg);}
 
   #view-multas .form-group .hint, #view-herramientas .form-group .hint{display:block; font-size:11px; color:var(--muted); margin-top:4px; font-weight:400;}
 
@@ -618,9 +618,17 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M8 13h2M8 17h2M14 13h2M14 17h2"/></svg>
         Cronograma SUNAT
       </button>
+      <button class="nav-item" data-tab="tipocambio" data-staff-only>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3l4 4-4 4"/><path d="M21 7H9"/><path d="M7 21l-4-4 4-4"/><path d="M3 17h12"/></svg>
+        Tipo de Cambio
+      </button>
       <button class="nav-item" data-tab="g4ta" data-staff-only>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>
         Generador 4ta
+      </button>
+      <button class="nav-item" data-tab="sire" data-staff-only>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M14 2v6h6"/><path d="M9 13l1.5 1.5L14 11"/></svg>
+        SIRE (RVIE/RCE)
       </button>
       <button class="nav-item" data-tab="herramientas" data-staff-only>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.1-3.1a5 5 0 0 1-6.6 6.6L5.4 21.5a2 2 0 0 1-2.8-2.8L11.3 9a5 5 0 0 1 6.6-6.6l-3.1 3.1z"/></svg>
@@ -840,7 +848,7 @@
         </div>
         <div class="panel" style="padding:0; overflow-x:auto;">
           <table>
-            <thead><tr><th>Cliente</th><th>Fecha</th><th>Cliente final</th><th class="num">Total</th><th class="num">Detracción</th><th class="num">Neto a cobrar</th><th>Estado</th><th></th></tr></thead>
+            <thead><tr><th>Cliente</th><th>Fecha</th><th>Comprobante</th><th>Cliente final</th><th class="num">Total</th><th class="num">Detracción</th><th class="num">Neto a cobrar</th><th>Estado</th><th></th></tr></thead>
             <tbody id="tblVentas"></tbody>
           </table>
         </div>
@@ -1226,6 +1234,57 @@
         </div>
       </section>
 
+      <!-- TIPO DE CAMBIO SUNAT -->
+      <section id="view-tipocambio" class="view">
+        <div class="panel">
+          <div class="panel-head"><h3>Tipo de cambio oficial SUNAT</h3></div>
+          <p class="cell-muted" style="margin:-6px 0 14px 0;">
+            Se usa el tipo de cambio VENTA (numeral 17 del art. 5 del Reglamento de la Ley del IGV, aplica igual a ventas y compras).
+            Cada fecha se consulta una sola vez — queda cacheada aquí para no repetir la consulta.
+          </p>
+          <div class="form-row" style="align-items:flex-end;">
+            <div class="form-group" style="flex:0 0 auto;">
+              <label for="tcArchivoPdf" class="btn btn-outline" style="margin:0; cursor:pointer; display:inline-flex;">📄 Subir reporte mensual de SUNAT (PDF)</label>
+              <input type="file" id="tcArchivoPdf" hidden accept=".pdf">
+            </div>
+          </div>
+          <div class="panel-head" style="margin-top:20px; margin-bottom:4px;"><h3 style="font-size:13px;">Agregar un día suelto a mano</h3></div>
+          <p class="cell-muted" style="margin:-2px 0 14px 0;">
+            Para un día que todavía no está en el reporte mensual: revisa el valor en la página oficial de SUNAT y complétalo aquí.
+          </p>
+          <div class="form-row" style="align-items:flex-end;">
+            <div class="form-group"><label>Fecha</label><input type="date" id="tcFechaManual"></div>
+            <div class="form-group"><label>Compra</label><input type="number" step="0.001" id="tcCompraManual" placeholder="3.391"></div>
+            <div class="form-group"><label>Venta</label><input type="number" step="0.001" id="tcVentaManual" placeholder="3.400"></div>
+            <button class="btn btn-primary" id="btnTcGuardarManual">Guardar</button>
+          </div>
+        </div>
+
+        <div class="panel" id="tcPanelPreview" style="display:none;">
+          <div class="panel-head">
+            <h3 id="tcPreviewTitulo">Vista previa</h3>
+            <button class="btn btn-primary btn-sm" id="btnTcGuardarMes">Guardar en tipo de cambio</button>
+          </div>
+          <p class="cell-muted" id="tcPreviewAviso" style="margin-top:-6px;"></p>
+          <div class="g4-table-wrap"><table class="g4-preview" id="tcTablaPreview"></table></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Tipos de cambio guardados</h3>
+            <button class="btn btn-primary btn-sm" id="btnTcGuardarEdicion" style="display:none;">Guardar cambios</button>
+          </div>
+          <div class="ag-toolbar" style="margin-bottom:16px;">
+            <div class="ag-nav">
+              <button onclick="tcNavPeriodo(-1)" aria-label="Mes anterior">‹</button>
+              <div class="ag-month-label" id="tcPeriodoLabel" style="min-width:110px;"></div>
+              <button onclick="tcNavPeriodo(1)" aria-label="Mes siguiente">›</button>
+            </div>
+          </div>
+          <div class="g4-table-wrap"><table class="g4-preview" id="tcTablaGuardada"></table></div>
+        </div>
+      </section>
+
       <!-- GENERADOR 4TA CATEGORÍA (PLAME) -->
       <section id="view-g4ta" class="view">
         <div class="panel">
@@ -1298,6 +1357,88 @@
           </div>
         </div>
         <p class="cell-muted" style="text-align:center; font-size:11.5px;">Basado en Anexo 3 (JUL2023) y Anexo 2 (ENE2025). Verifica siempre contra el aplicativo PLAME antes de presentar.</p>
+      </section>
+
+      <!-- SIRE (RVIE/RCE) -->
+      <section id="view-sire" class="view">
+        <div class="tabs">
+          <div class="tab active" data-tab="rvie" onclick="sireSetTab('rvie')">RVIE — Registro de Ventas</div>
+          <div class="tab" data-tab="rce" onclick="sireSetTab('rce')">RCE — Registro de Compras</div>
+        </div>
+
+        <div id="sire_panel_rvie">
+          <div class="panel">
+            <div class="panel-head"><h3>0. Cliente y período a declarar</h3></div>
+            <div class="form-row">
+              <div class="form-group"><label>Cliente</label>
+                <select id="rvieCliente"><option value="">— Selecciona un cliente —</option></select>
+              </div>
+              <div class="form-group"><label>Año</label><input type="number" id="rvieAnio" placeholder="2026" min="2011" max="2100"></div>
+              <div class="form-group"><label>Mes</label>
+                <select id="rvieMes">
+                  <option value="">--</option>
+                  <option value="01">01 - Enero</option><option value="02">02 - Febrero</option><option value="03">03 - Marzo</option>
+                  <option value="04">04 - Abril</option><option value="05">05 - Mayo</option><option value="06">06 - Junio</option>
+                  <option value="07">07 - Julio</option><option value="08">08 - Agosto</option><option value="09">09 - Septiembre</option>
+                  <option value="10">10 - Octubre</option><option value="11">11 - Noviembre</option><option value="12">12 - Diciembre</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn btn-primary" id="btnRvieCargar">Cargar comprobantes del período</button>
+            <p class="cell-muted" id="rvieResumen" style="margin-top:10px;"></p>
+          </div>
+
+          <div class="panel" id="rviePanelResultados" style="display:none;">
+            <div class="panel-head"><h3>1. Revisa y corrige lo que falte</h3></div>
+            <p class="cell-muted" style="margin-top:-6px;">Si falta un dato (ej. BI Gravada), corrígelo desde "Editar" en la fila — se vuelve a cargar automáticamente del comprobante actualizado.</p>
+            <div class="g4-table-wrap"><table class="g4-preview" id="rvieTable"></table></div>
+            <div style="margin-top:14px;">
+              <button class="btn btn-primary" id="btnRvieValidar">Validar</button>
+            </div>
+            <div id="rvieValidationMsg"></div>
+            <div style="display:none; margin-top:14px;" id="rvieDownloadActions">
+              <button class="btn btn-teal" id="btnRvieDescargar">⬇ Descargar TXT (Reemplazo RVIE)</button>
+            </div>
+          </div>
+          <p class="cell-muted" style="text-align:center; font-size:11.5px;">Basado en el Anexo 3 (R.S. 000112-2021/SUNAT) y verificado campo por campo contra un archivo real ya aceptado por SUNAT.</p>
+        </div>
+
+        <div id="sire_panel_rce" style="display:none;">
+          <div class="panel">
+            <div class="panel-head"><h3>0. Cliente y período a declarar</h3></div>
+            <div class="form-row">
+              <div class="form-group"><label>Cliente</label>
+                <select id="rceCliente"><option value="">— Selecciona un cliente —</option></select>
+              </div>
+              <div class="form-group"><label>Año</label><input type="number" id="rceAnio" placeholder="2026" min="2011" max="2100"></div>
+              <div class="form-group"><label>Mes</label>
+                <select id="rceMes">
+                  <option value="">--</option>
+                  <option value="01">01 - Enero</option><option value="02">02 - Febrero</option><option value="03">03 - Marzo</option>
+                  <option value="04">04 - Abril</option><option value="05">05 - Mayo</option><option value="06">06 - Junio</option>
+                  <option value="07">07 - Julio</option><option value="08">08 - Agosto</option><option value="09">09 - Septiembre</option>
+                  <option value="10">10 - Octubre</option><option value="11">11 - Noviembre</option><option value="12">12 - Diciembre</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn btn-primary" id="btnRceCargar">Cargar comprobantes del período</button>
+            <p class="cell-muted" id="rceResumen" style="margin-top:10px;"></p>
+          </div>
+
+          <div class="panel" id="rcePanelResultados" style="display:none;">
+            <div class="panel-head"><h3>1. Revisa y corrige lo que falte</h3></div>
+            <p class="cell-muted" style="margin-top:-6px;">Si falta un dato (ej. BI Gravada), corrígelo desde "Editar" en la fila — se vuelve a cargar automáticamente del comprobante actualizado.</p>
+            <div class="g4-table-wrap"><table class="g4-preview" id="rceTable"></table></div>
+            <div style="margin-top:14px;">
+              <button class="btn btn-primary" id="btnRceValidar">Validar</button>
+            </div>
+            <div id="rceValidationMsg"></div>
+            <div style="display:none; margin-top:14px;" id="rceDownloadActions">
+              <button class="btn btn-teal" id="btnRceDescargar">⬇ Descargar TXT (Reemplazo RCE)</button>
+            </div>
+          </div>
+          <p class="cell-muted" style="text-align:center; font-size:11.5px;">Basado en el Anexo 11 (R.S. 00040-2022/SUNAT) y verificado campo por campo contra un archivo real ya aceptado por SUNAT.</p>
+        </div>
       </section>
 
       <!-- HERRAMIENTAS -->
@@ -2078,7 +2219,14 @@ function mapComprobanteCompraFromDb(row){
     fechaEmision: row.fecha_emision, tipoComprobante: row.tipo_comprobante,
     numeroComprobante: row.numero_comprobante, concepto: row.concepto, montoTotal: row.monto_total, montoIgv: row.monto_igv,
     montoRetencion: row.monto_retencion, porcentajeRetencion: row.porcentaje_retencion, moneda: row.moneda || 'PEN',
-    estado: row.estado, ocrRaw: row.ocr_raw, subidoPor: row.subido_por, createdAt: row.created_at
+    estado: row.estado, ocrRaw: row.ocr_raw, subidoPor: row.subido_por, createdAt: row.created_at,
+    // Desglose SIRE (Etapa A) — ver sql/015_sire_desglose_comprobantes.sql
+    fechaVencimiento: row.fecha_vencimiento, biGravada: row.bi_gravada,
+    montoExonerado: row.monto_exonerado, montoInafecto: row.monto_inafecto,
+    isc: row.isc, icbper: row.icbper, tipoCambio: row.tipo_cambio,
+    docModificadoFechaEmision: row.doc_modificado_fecha_emision, docModificadoTipoCp: row.doc_modificado_tipo_cp,
+    docModificadoSerie: row.doc_modificado_serie, docModificadoNumero: row.doc_modificado_numero,
+    clasificacionCreditoIgv: row.clasificacion_credito_igv || 'DG', clasificacionBienesServicios: row.clasificacion_bienes_servicios
   };
 }
 function mapComprobanteVentaFromDb(row){
@@ -2090,7 +2238,14 @@ function mapComprobanteVentaFromDb(row){
     detraccionPct: row.detraccion_pct, detraccionMonto: row.detraccion_monto,
     montoRetencion: row.monto_retencion, porcentajeRetencion: row.porcentaje_retencion, moneda: row.moneda || 'PEN',
     netoCobrar: row.neto_cobrar,
-    estado: row.estado, ocrRaw: row.ocr_raw, subidoPor: row.subido_por, createdAt: row.created_at
+    estado: row.estado, ocrRaw: row.ocr_raw, subidoPor: row.subido_por, createdAt: row.created_at,
+    // Desglose SIRE (Etapa A) — ver sql/015_sire_desglose_comprobantes.sql
+    fechaVencimiento: row.fecha_vencimiento, biGravada: row.bi_gravada,
+    montoExonerado: row.monto_exonerado, montoInafecto: row.monto_inafecto,
+    isc: row.isc, icbper: row.icbper, tipoCambio: row.tipo_cambio,
+    docModificadoFechaEmision: row.doc_modificado_fecha_emision, docModificadoTipoCp: row.doc_modificado_tipo_cp,
+    docModificadoSerie: row.doc_modificado_serie, docModificadoNumero: row.doc_modificado_numero,
+    clasificacionOperacion: row.clasificacion_operacion || 'DG', valorExportacion: row.valor_exportacion
   };
 }
 function mapPagoFromDb(row){
@@ -2412,8 +2567,10 @@ function setTab(tab){
     multas:['Multas SUNAT','Calculadora de multas con gradualidad e interés'],
     honorarios:['Honorarios','Control de cobranza de tus honorarios'],
     cronograma:['Cronograma SUNAT','Fechas de vencimiento por último dígito de RUC'],
+    tipocambio:['Tipo de Cambio','Tipo de cambio oficial SUNAT (venta), cacheado por fecha'],
     usuarios:['Usuarios','Gestiona quién ve qué en tu estudio'],
     g4ta:['Generador 4ta','TXT para PLAME desde el reporte de recibos por honorarios SUNAT'],
+    sire:['SIRE (RVIE/RCE)','Archivos de reemplazo para el Registro de Ventas e Ingresos y el Registro de Compras'],
     herramientas:['Herramientas','Calculadoras de asesoría: suspensión de 4ta, simulador de régimen y más']
   };
   document.getElementById('viewTitle').textContent = titles[tab][0];
@@ -2619,11 +2776,14 @@ function fileToBase64(file){
   });
 }
 
-// Lee un comprobante (imagen o PDF) con el Worker de OCR (Gemini) y devuelve
+// Lee un comprobante (imagen o PDF) con el Worker de OCR y devuelve
 // { ruc, razon_social, fecha_emision, tipo_comprobante, numero_comprobante,
-//   monto_total, monto_igv }. No distingue compra/venta: extrae los datos del
-// emisor del documento tal cual aparecen; cada formulario decide dónde van.
-async function leerComprobanteConIA(file){
+//   monto_total, monto_igv, ... }. `tipo` ('compra'|'venta') le indica al
+// Worker qué proveedor de IA usar (compra=Claude, venta=Gemini — sin
+// respaldo entre uno y otro, si Gemini falla la lectura simplemente falla)
+// — no cambia qué se extrae, el Worker sigue extrayendo emisor/receptor
+// tal cual aparecen; cada formulario decide dónde van.
+async function leerComprobanteConIA(file, tipo){
   const {data:{session}} = await sb.auth.getSession();
   if(!session) throw new Error('Sesión no válida');
   const base64 = await fileToBase64(file);
@@ -2633,7 +2793,7 @@ async function leerComprobanteConIA(file){
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${session.access_token}`
     },
-    body: JSON.stringify({ mimeType: file.type, data: base64 })
+    body: JSON.stringify({ mimeType: file.type, data: base64, tipo })
   });
   const json = await resp.json();
   if(!resp.ok || !json.ok) throw new Error(json.error || 'No se pudo leer el comprobante');
@@ -2657,6 +2817,26 @@ async function leerEstadoCuentaConIA(file){
   const json = await resp.json();
   if(!resp.ok || !json.ok) throw new Error(json.error || 'No se pudo leer el estado de cuenta');
   return json.data;
+}
+
+// Tipo de cambio oficial SUNAT para una fecha dada — devuelve {fecha, compra,
+// venta} (venta es lo que usa el sistema: numeral 17 del art. 5 del
+// Reglamento de la Ley del IGV, aplica igual a Registro de Ventas y de
+// Compras). Solo busca en la caché local (tipo_cambio_sunat) — YA NO intenta
+// consultar a SUNAT automáticamente: se confirmó con logs reales de
+// producción (wrangler tail) que SUNAT bloquea a nivel de red las conexiones
+// desde Cloudflare Browser Rendering (net::ERR_CONNECTION_RESET consistente
+// en cada intento, no transitorio — una prueba aislada a un sitio externo
+// distinto funcionó bien, así que el bloqueo es específico de SUNAT, no un
+// problema de Browser Rendering en general). No es arreglable con más
+// reintentos, así que se abandonó esa vía: la sección "Tipo de Cambio" ahora
+// solo se llena subiendo el reporte mensual en PDF o a mano — si la fecha no
+// está ahí, esta función falla con un mensaje claro en vez de intentar (y
+// fallar) una consulta automática.
+async function obtenerTipoCambio(fechaISO){
+  const { data: cacheado } = await sb.from('tipo_cambio_sunat').select('fecha, compra, venta').eq('fecha', fechaISO).maybeSingle();
+  if(cacheado) return cacheado;
+  throw new Error(`No hay tipo de cambio guardado para el ${fmtFecha(fechaISO)} — agrégalo en "Tipo de Cambio" (reporte mensual en PDF o a mano) y vuelve a guardar.`);
 }
 
 let misComprobantesPeriodo = periodoActualComprobantes();
@@ -2808,6 +2988,10 @@ function openComprobanteCompraModal(compraExistente, clienteIdParaCrear){
     <div class="form-group">
       <label>Archivo (foto o PDF de la factura)${esEdicion ? ' — deja vacío para no cambiarlo' : ''}</label>
       <input type="file" id="mCompraArchivo" accept="image/*,.pdf" onchange="autocompletarCompraConIA(${esEdicion?`'${c.id}'`:'null'})">
+      <label style="display:flex; align-items:center; gap:8px; font-weight:600; margin-top:8px; font-size:13px;">
+        <input type="checkbox" id="mCompraLeerIA" checked style="width:auto;">
+        Leer con IA al elegir el archivo
+      </label>
       <span class="form-hint" id="mCompraEstadoIA"></span>
     </div>
     <div class="alert-banner danger" id="mCompraAvisoRuc" style="display:none; margin-top:2px; margin-bottom:14px;">
@@ -2860,6 +3044,43 @@ function openComprobanteCompraModal(compraExistente, clienteIdParaCrear){
     <div class="ficha-grid" style="margin-top:2px; margin-bottom:14px;">
       <div class="ficha-item"><b>Neto a pagar</b><span id="mCompraNeto">S/ 0.00</span></div>
     </div>
+    <details class="g4-details">
+      <summary>Datos para SIRE (Registro de Compras)</summary>
+      <div class="form-row" style="margin-top:10px;">
+        <div class="form-group"><label>Fecha de vencimiento</label><input type="date" id="mCompraFechaVenc" value="${c?.fechaVencimiento||''}"></div>
+        <div class="form-group"><label>Tipo de cambio</label><input type="number" id="mCompraTipoCambio" step="0.001" value="${c?.tipoCambio ?? ''}" placeholder="Solo si aplica (USD)"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>BI gravada</label><input type="number" id="mCompraBiGravada" step="0.01" value="${c?.biGravada ?? ''}"></div>
+        <div class="form-group"><label>Monto exonerado</label><input type="number" id="mCompraExonerado" step="0.01" value="${c?.montoExonerado ?? 0}"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Monto inafecto</label><input type="number" id="mCompraInafecto" step="0.01" value="${c?.montoInafecto ?? 0}"></div>
+        <div class="form-group"><label>ISC</label><input type="number" id="mCompraIsc" step="0.01" value="${c?.isc ?? 0}"></div>
+      </div>
+      <div class="form-group"><label>ICBPER</label><input type="number" id="mCompraIcbper" step="0.01" value="${c?.icbper ?? 0}"></div>
+      <div class="form-hint" style="margin:6px 0 10px;">Documento modificado — solo si es Nota de crédito/débito:</div>
+      <div class="form-row">
+        <div class="form-group"><label>Fecha emisión doc. modificado</label><input type="date" id="mCompraDocModFecha" value="${c?.docModificadoFechaEmision||''}"></div>
+        <div class="form-group"><label>Tipo doc. modificado</label>
+          <select id="mCompraDocModTipo"><option value="">—</option>${opcionesTipoComprobante(c?.docModificadoTipoCp||'')}</select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Serie doc. modificado</label><input type="text" id="mCompraDocModSerie" value="${c?escapeHtml(c.docModificadoSerie)||'':''}"></div>
+        <div class="form-group"><label>Número doc. modificado</label><input type="text" id="mCompraDocModNumero" value="${c?escapeHtml(c.docModificadoNumero)||'':''}"></div>
+      </div>
+      <div class="form-row" style="margin-top:4px;">
+        <div class="form-group"><label>Clasificación crédito IGV</label>
+          <select id="mCompraClasifCredito">
+            <option value="DG" ${(c?.clasificacionCreditoIgv||'DG')==='DG'?'selected':''}>DG — Destinada a op. gravadas</option>
+            <option value="DGNG" ${c?.clasificacionCreditoIgv==='DGNG'?'selected':''}>DGNG — Gravadas y no gravadas</option>
+            <option value="DNG" ${c?.clasificacionCreditoIgv==='DNG'?'selected':''}>DNG — Destinada a op. no gravadas</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Clasificación bienes/servicios</label><input type="text" id="mCompraClasifBienes" value="${c?escapeHtml(c.clasificacionBienesServicios)||'':''}" placeholder="Opcional"></div>
+      </div>
+    </details>
     <div class="form-hint">${esEdicion ? 'Corrige los campos que hagan falta.' : 'Al elegir el archivo se intenta completar estos campos automáticamente — revísalos antes de subir.'}</div>
   `;
   const foot = `
@@ -2902,6 +3123,55 @@ const TIPOS_CON_RUC_RECEPTOR = [
 
 function soloDigitos(s){ return (s||'').replace(/\D/g, ''); }
 
+// Catálogo 01 SUNAT (Tipo de Comprobante de Pago) — mapea nuestros TIPOS_COMPROBANTE
+// (en español, pensados para el usuario) al código de 2 dígitos que exige SIRE.
+// "Recibo por Arrendamiento" (Formulario 1683, renta de 1ra) no tiene código propio en
+// este catálogo — se usa "00 Otros" como aproximación más cercana; igual que "Otro".
+const CATALOGO01_POR_TIPO = {
+  'Factura': '01',
+  'Recibo por honorarios': '02',
+  'Boleta': '03',
+  'Nota de crédito': '07',
+  'Nota de débito': '08',
+  'Guía de Remisión': '09',
+  'Ticket/Boleta de máquina registradora': '12',
+  'Recibo por Servicios Públicos': '14',
+  'Comprobante de Retención': '20',
+  'Comprobante de Percepción': '40',
+  'Recibo por Arrendamiento': '00',
+  'Otro': '00'
+};
+
+// Catálogo 06 SUNAT (Tipo de Documento de Identidad) — se deriva automáticamente de la
+// cantidad de dígitos del RUC/DNI guardado, sin pedirle este dato al usuario aparte:
+// 11 dígitos = RUC (6), 8 dígitos = DNI (1). Si hay documento pero no calza con ninguno
+// de los dos formatos (ej. un ID tributario extranjero de 10 dígitos, confirmado en un
+// archivo real aceptado por SUNAT), se asume "0" — No domiciliado sin RUC, el caso más
+// común para ese patrón. Solo si no hay ningún documento queda vacío.
+function catalogo06PorDocumento(rucODni){
+  const d = soloDigitos(rucODni);
+  if(d.length===11) return '6';
+  if(d.length===8) return '1';
+  if(d.length>0) return '0';
+  return '';
+}
+
+// Divide "F001-00123" en serie "F001" y número "00123". Si no hay guion, todo va al
+// número y la serie queda vacía.
+function splitNumeroComprobanteSire(numero){
+  const s = (numero||'').trim();
+  const i = s.indexOf('-');
+  if(i<0) return {serie:'', numero:s};
+  return {serie: s.slice(0,i).trim(), numero: s.slice(i+1).trim()};
+}
+
+function isoADDMMAAAA(iso){
+  if(!iso) return '';
+  const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(!m) return '';
+  return `${m[3]}/${m[2]}/${m[1]}`;
+}
+
 function mostrarAvisoRucCompra(){
   const aviso = document.getElementById('mCompraAvisoRuc');
   const chk = document.getElementById('mCompraConfirmarRuc');
@@ -2926,10 +3196,14 @@ async function autocompletarCompraConIA(idParaEditar){
   const file = document.getElementById('mCompraArchivo').files[0];
   const estadoEl = document.getElementById('mCompraEstadoIA');
   if(!file) return;
+  if(!document.getElementById('mCompraLeerIA')?.checked){
+    if(estadoEl) estadoEl.textContent = 'Archivo adjuntado sin leer con IA — completa los campos a mano.';
+    return;
+  }
   if(estadoEl) estadoEl.textContent = 'Leyendo con IA...';
   ocultarAvisoRucCompra();
   try{
-    const datos = await leerComprobanteConIA(file);
+    const datos = await leerComprobanteConIA(file, 'compra');
     if(datos.ruc) document.getElementById('mCompraRuc').value = datos.ruc;
     if(datos.razon_social) document.getElementById('mCompraRazonSocial').value = datos.razon_social;
     if(datos.fecha_emision) document.getElementById('mCompraFecha').value = datos.fecha_emision;
@@ -2941,6 +3215,17 @@ async function autocompletarCompraConIA(idParaEditar){
     if(datos.monto_igv) document.getElementById('mCompraIgv').value = datos.monto_igv;
     if(datos.monto_retencion) document.getElementById('mCompraRetencionMonto').value = datos.monto_retencion;
     if(datos.porcentaje_retencion) document.getElementById('mCompraRetencionPct').value = datos.porcentaje_retencion;
+    if(datos.fecha_vencimiento) document.getElementById('mCompraFechaVenc').value = datos.fecha_vencimiento;
+    if(datos.bi_gravada) document.getElementById('mCompraBiGravada').value = datos.bi_gravada;
+    if(datos.monto_exonerado) document.getElementById('mCompraExonerado').value = datos.monto_exonerado;
+    if(datos.monto_inafecto) document.getElementById('mCompraInafecto').value = datos.monto_inafecto;
+    if(datos.isc) document.getElementById('mCompraIsc').value = datos.isc;
+    if(datos.icbper) document.getElementById('mCompraIcbper').value = datos.icbper;
+    if(datos.tipo_cambio) document.getElementById('mCompraTipoCambio').value = datos.tipo_cambio;
+    if(datos.doc_modificado_fecha_emision) document.getElementById('mCompraDocModFecha').value = datos.doc_modificado_fecha_emision;
+    if(datos.doc_modificado_tipo_cp && TIPOS_COMPROBANTE.includes(datos.doc_modificado_tipo_cp)) document.getElementById('mCompraDocModTipo').value = datos.doc_modificado_tipo_cp;
+    if(datos.doc_modificado_serie) document.getElementById('mCompraDocModSerie').value = datos.doc_modificado_serie;
+    if(datos.doc_modificado_numero) document.getElementById('mCompraDocModNumero').value = datos.doc_modificado_numero;
     compraRecalcular();
 
     // Si el tipo lleva RUC del receptor y la IA logró leerlo, lo comparamos
@@ -2974,6 +3259,25 @@ async function guardarComprobanteCompra(idParaEditar){
   btn.disabled = true;
   btn.textContent = 'Guardando...';
   try{
+    // USD sin tipo de cambio: lo busca en la caché de tipo_cambio_sunat antes
+    // de guardar (ya no se consulta a SUNAT automáticamente — SUNAT bloquea
+    // esas conexiones, ver obtenerTipoCambio) — si no está cacheado, no
+    // guarda con el campo vacío en silencio, avisa y deja que se complete a
+    // mano (el campo del formulario, o agregando la fecha en "Tipo de Cambio").
+    const monedaSel = document.getElementById('mCompraMoneda').value;
+    const fechaEmisionSel = document.getElementById('mCompraFecha').value;
+    const tcInput = document.getElementById('mCompraTipoCambio');
+    if(monedaSel==='USD' && !tcInput.value && fechaEmisionSel){
+      try{
+        tcInput.value = (await obtenerTipoCambio(fechaEmisionSel)).venta;
+      }catch(errTC){
+        showToast(errTC.message, true);
+        btn.disabled = false;
+        btn.textContent = idParaEditar ? 'Guardar cambios' : 'Subir';
+        return;
+      }
+    }
+
     let archivoUrl;
     if(file) archivoUrl = await subirArchivoComprobante(file, clienteId);
     const montoTxt = document.getElementById('mCompraMonto').value;
@@ -2991,7 +3295,20 @@ async function guardarComprobanteCompra(idParaEditar){
       monto_total: montoTxt ? Number(montoTxt) : null,
       monto_igv: igvTxt ? Number(igvTxt) : null,
       monto_retencion: retencionTxt ? Number(retencionTxt) : null,
-      porcentaje_retencion: retencionPctTxt ? Number(retencionPctTxt) : null
+      porcentaje_retencion: retencionPctTxt ? Number(retencionPctTxt) : null,
+      fecha_vencimiento: document.getElementById('mCompraFechaVenc').value || null,
+      bi_gravada: document.getElementById('mCompraBiGravada').value ? Number(document.getElementById('mCompraBiGravada').value) : null,
+      monto_exonerado: Number(document.getElementById('mCompraExonerado').value) || 0,
+      monto_inafecto: Number(document.getElementById('mCompraInafecto').value) || 0,
+      isc: Number(document.getElementById('mCompraIsc').value) || 0,
+      icbper: Number(document.getElementById('mCompraIcbper').value) || 0,
+      tipo_cambio: document.getElementById('mCompraTipoCambio').value ? Number(document.getElementById('mCompraTipoCambio').value) : null,
+      doc_modificado_fecha_emision: document.getElementById('mCompraDocModFecha').value || null,
+      doc_modificado_tipo_cp: document.getElementById('mCompraDocModTipo').value || null,
+      doc_modificado_serie: document.getElementById('mCompraDocModSerie').value.trim() || null,
+      doc_modificado_numero: document.getElementById('mCompraDocModNumero').value.trim() || null,
+      clasificacion_credito_igv: document.getElementById('mCompraClasifCredito').value,
+      clasificacion_bienes_servicios: document.getElementById('mCompraClasifBienes').value.trim() || null
     };
     if(!idParaEditar) payload.cliente_id = clienteId;
     if(archivoUrl) payload.archivo_url = archivoUrl;
@@ -3201,7 +3518,7 @@ function renderVentas(){
   ventas.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
 
   tbody.innerHTML = ventas.length===0
-    ? `<tr class="empty-row"><td colspan="8">No hay comprobantes de venta${filtroCliente||filtroEstado ? ' con ese filtro' : ''}.</td></tr>`
+    ? `<tr class="empty-row"><td colspan="9">No hay comprobantes de venta${filtroCliente||filtroEstado ? ' con ese filtro' : ''}.</td></tr>`
     : ventas.map(v=>{
         const badge = estadoComprobanteBadge('venta', v);
         const yaCompleto = v.estado === 'cobrado';
@@ -3209,6 +3526,7 @@ function renderVentas(){
         return `<tr>
           <td class="cell-strong">${escapeHtml(clienteNombre(v.clienteId))}</td>
           <td class="cell-muted">${v.fechaEmision ? fmtFecha(v.fechaEmision) : '—'}</td>
+          <td>${v.tipoComprobante ? escapeHtml(v.tipoComprobante) + (v.numeroComprobante ? ' ' + escapeHtml(v.numeroComprobante) : '') : '—'}</td>
           <td>${escapeHtml(v.razonSocialClienteFinal)||'—'}<div class="cell-muted">${escapeHtml(v.rucClienteFinal)||''}</div>${v.concepto ? `<div class="cell-muted" style="font-style:italic;">${escapeHtml(v.concepto)}</div>` : ''}</td>
           <td class="num">${v.montoTotal!=null ? fmtMoney(v.montoTotal, v.moneda) : '—'}</td>
           <td class="num">${v.detraccionMonto!=null ? fmtMoney(v.detraccionMonto, v.moneda) : '—'}<div class="cell-muted">${v.detraccionPct!=null ? v.detraccionPct+'%' : ''}</div>${Number(v.montoRetencion||0)>0 ? `<div class="cell-muted" style="font-size:10.5px;">Retención: ${fmtMoney(v.montoRetencion, v.moneda)}</div>` : ''}</td>
@@ -3244,6 +3562,10 @@ function openVentaModal(clientePreseleccionado, ventaExistente){
     <div class="form-group">
       <label>Archivo (factura de venta)${esEdicion ? ' — deja vacío para no cambiarlo' : ''}</label>
       <input type="file" id="mVentaArchivo" accept="image/*,.pdf" onchange="autocompletarVentaConIA()">
+      <label style="display:flex; align-items:center; gap:8px; font-weight:600; margin-top:8px; font-size:13px;">
+        <input type="checkbox" id="mVentaLeerIA" checked style="width:auto;">
+        Leer con IA al elegir el archivo
+      </label>
       <span class="form-hint" id="mVentaEstadoIA"></span>
     </div>
     <div class="form-row">
@@ -3288,6 +3610,43 @@ function openVentaModal(clientePreseleccionado, ventaExistente){
       <div class="ficha-item"><b>Detracción</b><span id="mVentaDetraccionMonto">S/ 0.00</span></div>
       <div class="ficha-item"><b>Neto a cobrar</b><span id="mVentaNeto">S/ 0.00</span></div>
     </div>
+    <details class="g4-details">
+      <summary>Datos para SIRE (Registro de Ventas)</summary>
+      <div class="form-row" style="margin-top:10px;">
+        <div class="form-group"><label>Fecha de vencimiento</label><input type="date" id="mVentaFechaVenc" value="${v?.fechaVencimiento||''}"></div>
+        <div class="form-group"><label>Tipo de cambio</label><input type="number" id="mVentaTipoCambio" step="0.001" value="${v?.tipoCambio ?? ''}" placeholder="Solo si aplica (USD)"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>BI gravada</label><input type="number" id="mVentaBiGravada" step="0.01" value="${v?.biGravada ?? ''}"></div>
+        <div class="form-group"><label>Monto exonerado</label><input type="number" id="mVentaExonerado" step="0.01" value="${v?.montoExonerado ?? 0}"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Monto inafecto</label><input type="number" id="mVentaInafecto" step="0.01" value="${v?.montoInafecto ?? 0}"></div>
+        <div class="form-group"><label>ISC</label><input type="number" id="mVentaIsc" step="0.01" value="${v?.isc ?? 0}"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>ICBPER</label><input type="number" id="mVentaIcbper" step="0.01" value="${v?.icbper ?? 0}"></div>
+        <div class="form-group"><label>Valor exportación</label><input type="number" id="mVentaValorExport" step="0.01" value="${v?.valorExportacion ?? 0}"></div>
+      </div>
+      <div class="form-hint" style="margin:6px 0 10px;">Documento modificado — solo si es Nota de crédito/débito:</div>
+      <div class="form-row">
+        <div class="form-group"><label>Fecha emisión doc. modificado</label><input type="date" id="mVentaDocModFecha" value="${v?.docModificadoFechaEmision||''}"></div>
+        <div class="form-group"><label>Tipo doc. modificado</label>
+          <select id="mVentaDocModTipo"><option value="">—</option>${opcionesTipoComprobante(v?.docModificadoTipoCp||'')}</select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Serie doc. modificado</label><input type="text" id="mVentaDocModSerie" value="${v?escapeHtml(v.docModificadoSerie)||'':''}"></div>
+        <div class="form-group"><label>Número doc. modificado</label><input type="text" id="mVentaDocModNumero" value="${v?escapeHtml(v.docModificadoNumero)||'':''}"></div>
+      </div>
+      <div class="form-group" style="margin-top:4px;"><label>Clasificación de la operación</label>
+        <select id="mVentaClasifOperacion">
+          <option value="DG" ${(v?.clasificacionOperacion||'DG')==='DG'?'selected':''}>DG — Gravada</option>
+          <option value="DGNG" ${v?.clasificacionOperacion==='DGNG'?'selected':''}>DGNG — Gravada y no gravada</option>
+          <option value="DNG" ${v?.clasificacionOperacion==='DNG'?'selected':''}>DNG — No gravada (exonerada/inafecta)</option>
+        </select>
+      </div>
+    </details>
   `;
   const foot = `
     <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
@@ -3307,9 +3666,13 @@ async function autocompletarVentaConIA(){
   const file = document.getElementById('mVentaArchivo').files[0];
   const estadoEl = document.getElementById('mVentaEstadoIA');
   if(!file) return;
+  if(!document.getElementById('mVentaLeerIA')?.checked){
+    if(estadoEl) estadoEl.textContent = 'Archivo adjuntado sin leer con IA — completa los campos a mano.';
+    return;
+  }
   if(estadoEl) estadoEl.textContent = 'Leyendo con IA...';
   try{
-    const datos = await leerComprobanteConIA(file);
+    const datos = await leerComprobanteConIA(file, 'venta');
     // "Cliente final" en una venta es el RECEPTOR del documento, no el emisor
     // (el emisor ahí es el propio cliente del estudio) — usar los campos _receptor.
     if(datos.ruc_receptor) document.getElementById('mVentaRuc').value = datos.ruc_receptor;
@@ -3326,6 +3689,17 @@ async function autocompletarVentaConIA(){
     if(datos.monto_total){
       document.getElementById('mVentaMonto').value = datos.monto_total;
     }
+    if(datos.fecha_vencimiento) document.getElementById('mVentaFechaVenc').value = datos.fecha_vencimiento;
+    if(datos.bi_gravada) document.getElementById('mVentaBiGravada').value = datos.bi_gravada;
+    if(datos.monto_exonerado) document.getElementById('mVentaExonerado').value = datos.monto_exonerado;
+    if(datos.monto_inafecto) document.getElementById('mVentaInafecto').value = datos.monto_inafecto;
+    if(datos.isc) document.getElementById('mVentaIsc').value = datos.isc;
+    if(datos.icbper) document.getElementById('mVentaIcbper').value = datos.icbper;
+    if(datos.tipo_cambio) document.getElementById('mVentaTipoCambio').value = datos.tipo_cambio;
+    if(datos.doc_modificado_fecha_emision) document.getElementById('mVentaDocModFecha').value = datos.doc_modificado_fecha_emision;
+    if(datos.doc_modificado_tipo_cp && TIPOS_COMPROBANTE.includes(datos.doc_modificado_tipo_cp)) document.getElementById('mVentaDocModTipo').value = datos.doc_modificado_tipo_cp;
+    if(datos.doc_modificado_serie) document.getElementById('mVentaDocModSerie').value = datos.doc_modificado_serie;
+    if(datos.doc_modificado_numero) document.getElementById('mVentaDocModNumero').value = datos.doc_modificado_numero;
     ventasRecalcular();
     if(estadoEl) estadoEl.textContent = '✓ Datos leídos automáticamente — revísalos antes de guardar.';
   }catch(err){
@@ -3342,6 +3716,26 @@ async function guardarVenta(idParaEditar){
   btn.disabled = true;
   btn.textContent = 'Guardando...';
   try{
+    // USD sin tipo de cambio: lo busca en la caché de tipo_cambio_sunat antes
+    // de guardar (ya no se consulta a SUNAT automáticamente — SUNAT bloquea
+    // esas conexiones, ver obtenerTipoCambio) — si no está cacheado, no
+    // guarda con el campo vacío en silencio, avisa y deja que se complete a
+    // mano (el campo del formulario, o agregando la fecha en "Tipo de Cambio").
+    const monedaSel = document.getElementById('mVentaMoneda').value;
+    const fechaEmisionSel = document.getElementById('mVentaFecha').value;
+    const tcInput = document.getElementById('mVentaTipoCambio');
+    if(monedaSel==='USD' && !tcInput.value && fechaEmisionSel){
+      try{
+        tcInput.value = (await obtenerTipoCambio(fechaEmisionSel)).venta;
+      }catch(errTC){
+        showToast(errTC.message, true);
+        btn.disabled = false;
+        btn.textContent = idParaEditar ? 'Guardar cambios' : 'Guardar';
+        return;
+      }
+      btn.textContent = 'Guardando...';
+    }
+
     let archivoUrl;
     if(file) archivoUrl = await subirArchivoComprobante(file, clienteId);
     const monto = Number(document.getElementById('mVentaMonto').value)||0;
@@ -3362,7 +3756,20 @@ async function guardarVenta(idParaEditar){
       detraccion_monto: detraccionMonto,
       monto_retencion: retencionMonto || null,
       porcentaje_retencion: retencionPct || null,
-      neto_cobrar: netoCobrar
+      neto_cobrar: netoCobrar,
+      fecha_vencimiento: document.getElementById('mVentaFechaVenc').value || null,
+      bi_gravada: document.getElementById('mVentaBiGravada').value ? Number(document.getElementById('mVentaBiGravada').value) : null,
+      monto_exonerado: Number(document.getElementById('mVentaExonerado').value) || 0,
+      monto_inafecto: Number(document.getElementById('mVentaInafecto').value) || 0,
+      isc: Number(document.getElementById('mVentaIsc').value) || 0,
+      icbper: Number(document.getElementById('mVentaIcbper').value) || 0,
+      tipo_cambio: document.getElementById('mVentaTipoCambio').value ? Number(document.getElementById('mVentaTipoCambio').value) : null,
+      doc_modificado_fecha_emision: document.getElementById('mVentaDocModFecha').value || null,
+      doc_modificado_tipo_cp: document.getElementById('mVentaDocModTipo').value || null,
+      doc_modificado_serie: document.getElementById('mVentaDocModSerie').value.trim() || null,
+      doc_modificado_numero: document.getElementById('mVentaDocModNumero').value.trim() || null,
+      clasificacion_operacion: document.getElementById('mVentaClasifOperacion').value,
+      valor_exportacion: Number(document.getElementById('mVentaValorExport').value) || 0
     };
     if(!idParaEditar) payload.cliente_id = clienteId;
     if(archivoUrl) payload.archivo_url = archivoUrl;
@@ -5823,8 +6230,27 @@ function renderAll(){
   renderCronograma();
   renderUsuarios();
   poblarSelectClienteG4();
+  poblarSelectClienteSire();
   mmPoblarClientesDatalist();
+  if(typeof refrescarSireRvie==='function') refrescarSireRvie();
+  if(typeof refrescarSireRce==='function') refrescarSireRce();
+  if(typeof tcCargarTablaGuardada==='function') tcCargarTablaGuardada();
   if(state.miPerfil) applyRoleUI();
+}
+function sireSetTab(tab){
+  document.querySelectorAll('#view-sire .tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===tab));
+  document.getElementById('sire_panel_rvie').style.display = tab==='rvie' ? '' : 'none';
+  document.getElementById('sire_panel_rce').style.display = tab==='rce' ? '' : 'none';
+}
+function poblarSelectClienteSire(){
+  ['rvieCliente','rceCliente'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    const cur = el.value;
+    el.innerHTML = ['<option value="">— Selecciona un cliente —</option>']
+      .concat(state.clientes.map(c=>`<option value="${c.id}">${escapeHtml(c.nombre)}</option>`)).join('');
+    el.value = cur;
+  });
 }
 function mmPoblarClientesDatalist(){
   const el = document.getElementById('mm_clientesDatalist');
@@ -7075,6 +7501,591 @@ async function importarDatos(data){
   });
 })();
 
+/* ================= SIRE — RVIE (Registro de Ventas e Ingresos) ================= */
+/* Genera el "archivo de Reemplazo" (Anexo 3, R.S. 000112-2021/SUNAT): texto plano,
+   33 campos separados por "|" por comprobante (los llena el contribuyente) — el campo
+   34 en adelante (CLU1-17) NO se incluye en absoluto, confirmado contra un archivo
+   real ya aceptado por SUNAT (contando pipes: el archivo termina en el campo 33, no
+   hay padding de 17 columnas vacías). Mismo patrón que el Generador 4ta: cargar →
+   tabla editable/revisable → Validar → Descargar, pero la "edición" real ocurre en el
+   propio modal de venta (reutiliza openVentaModal/guardarVenta en vez de duplicar un
+   formulario aquí). */
+(function(){
+  const RVIE_COLS = [
+    {name:'RUC', type:'A', max:11, required:true},
+    {name:'RazonSocialPropia', type:'A', max:1500, required:true}, // campo 2 = razón social del declarante (no un "ID" — confirmado: mismo valor en las 40 líneas de un archivo real)
+    {name:'Periodo', type:'A', max:6, required:true},
+    {name:'CAR', type:'blank'},
+    {name:'FechaEmision', type:'fecha', required:true},
+    {name:'FechaVctoPago', type:'fecha'},
+    {name:'TipoCpDoc', type:'A', max:2, required:true},
+    {name:'Serie', type:'A', max:20},
+    {name:'NroInicial', type:'A', max:20, required:true},
+    {name:'NroFinal', type:'A', max:20}, // confirmado siempre vacío en un archivo real — nunca se duplica NroInicial (nuestro modelo es una fila = un comprobante, nunca un rango)
+    {name:'TipoDocIdentidad', type:'A', max:1},
+    {name:'NroDocIdentidad', type:'A', max:15},
+    {name:'RazonSocial', type:'A', max:1500},
+    {name:'ValorFacturadoExportacion', type:'monto', dec:2},
+    {name:'BiGravada', type:'monto', dec:2, required:true},
+    {name:'DsctoBI', type:'monto', dec:2},
+    {name:'IgvDG', type:'monto', dec:2},
+    {name:'DsctoIgv', type:'monto', dec:2},
+    {name:'MtoExonerado', type:'monto', dec:2},
+    {name:'MtoInafecto', type:'monto', dec:2},
+    {name:'Isc', type:'monto', dec:2},
+    {name:'BiGravIvap', type:'monto', dec:2},
+    {name:'Ivap', type:'monto', dec:2},
+    {name:'Icbper', type:'monto', dec:2},
+    {name:'OtrosTributos', type:'monto', dec:2},
+    {name:'TotalCP', type:'monto', dec:2, required:true},
+    {name:'Moneda', type:'A', max:3, required:true, allowed:['PEN','USD']},
+    {name:'TipoCambio', type:'tc'},
+    {name:'DocModFechaEmision', type:'fecha'},
+    {name:'DocModTipoCp', type:'A', max:2},
+    {name:'DocModSerie', type:'A', max:20},
+    {name:'DocModNumero', type:'A', max:20},
+    {name:'IdProyecto', type:'A', max:50},
+  ];
+
+  function formatMontoRvie(v, dec){
+    const n = Number(v)||0;
+    return n.toFixed(dec);
+  }
+  function formatTCRvie(v){
+    if(v===undefined || v===null || v==='') return '';
+    const n = Number(v);
+    if(isNaN(n) || n<=0) return '';
+    return n.toFixed(3);
+  }
+
+  function validarFilaRvie(row){
+    const errs = [];
+    const out = [];
+    RVIE_COLS.forEach(col=>{
+      let raw = row[col.name];
+      if(raw===undefined || raw===null) raw = '';
+      raw = typeof raw==='string' ? raw.trim() : raw;
+
+      if(col.type==='blank'){ out.push(''); return; }
+      if(col.required && raw===''){
+        errs.push(`${col.name} es obligatorio`);
+        out.push('');
+        return;
+      }
+      if(col.type==='fecha'){
+        out.push(raw); // ya viene formateada DD/MM/AAAA desde buildRvieRow
+      } else if(col.type==='monto'){
+        out.push(formatMontoRvie(raw, col.dec));
+      } else if(col.type==='tc'){
+        out.push(formatTCRvie(raw));
+      } else {
+        const s = String(raw);
+        if(col.allowed && s!=='' && !col.allowed.includes(s)){
+          errs.push(`${col.name}="${s}" no es válido (debe ser ${col.allowed.join('/')})`);
+        }
+        if(col.max && s.length>col.max){
+          errs.push(`${col.name} excede ${col.max} caracteres`);
+        }
+        out.push(s);
+      }
+    });
+
+    // Nota de crédito (07) / Nota de débito (08): el documento modificado es obligatorio.
+    const tipoCp = out[RVIE_COLS.findIndex(c=>c.name==='TipoCpDoc')];
+    if(tipoCp==='07' || tipoCp==='08'){
+      const campos = ['DocModFechaEmision','DocModTipoCp','DocModSerie','DocModNumero'];
+      campos.forEach(nombre=>{
+        const idx = RVIE_COLS.findIndex(c=>c.name===nombre);
+        if(!out[idx]) errs.push(`${nombre} es obligatorio en Notas de crédito/débito (documento que modifican)`);
+      });
+    }
+
+    // Moneda USD: el tipo de cambio es obligatorio (si no, el archivo declararía en
+    // dólares sin forma de convertir — mejor bloquear que dejarlo vacío en silencio).
+    const moneda = out[RVIE_COLS.findIndex(c=>c.name==='Moneda')];
+    const tc = out[RVIE_COLS.findIndex(c=>c.name==='TipoCambio')];
+    if(moneda==='USD' && !tc){
+      errs.push('TipoCambio es obligatorio cuando Moneda=USD');
+    }
+
+    // Sin padding de CLU — confirmado contra un archivo real que el "archivo de
+    // Reemplazo" termina en el campo 33, las 17 columnas CLU no se incluyen.
+    const txtOut = out;
+    return {out, errs, txtOut};
+  }
+
+  function buildRvieRow(v, cliente, periodoAAAAMM, idx){
+    const {serie, numero} = splitNumeroComprobanteSire(v.numeroComprobante);
+    const docId = soloDigitos(v.rucClienteFinal);
+    const tipoCp = CATALOGO01_POR_TIPO[v.tipoComprobante] || '00';
+    let igv = '';
+    if(v.biGravada !== null && v.biGravada !== undefined && v.biGravada !== ''){
+      const bi = Number(v.biGravada)||0;
+      const total = Number(v.montoTotal)||0;
+      const exo = Number(v.montoExonerado)||0;
+      const ina = Number(v.montoInafecto)||0;
+      const isc = Number(v.isc)||0;
+      const icb = Number(v.icbper)||0;
+      igv = Math.round((total - bi - exo - ina - isc - icb)*100)/100;
+    }
+    // Nota de crédito (07): confirmado contra un archivo real que sus montos van en
+    // NEGATIVO (reflejan la reversión de la venta original) — la Nota de débito (08)
+    // NO se niega (suma al registro, no resta); esto último es convención estándar,
+    // no hay ejemplo de ND en los archivos reales revisados.
+    const signo = (tipoCp==='07') ? -1 : 1;
+    // Preserva null/undefined tal cual (no los convierte en 0) — BiGravada depende de
+    // eso para que la validación "sin revisar" siga detectando un comprobante que
+    // nunca se completó, en vez de dejarlo pasar como 0 silenciosamente.
+    const neg = (n) => (n===''||n===null||n===undefined ? n : Math.round(Number(n||0)*signo*100)/100);
+    return {
+      RUC: soloDigitos(cliente?.ruc),
+      RazonSocialPropia: cliente?.nombre || '',
+      Periodo: periodoAAAAMM,
+      CAR: '',
+      FechaEmision: isoADDMMAAAA(v.fechaEmision),
+      FechaVctoPago: isoADDMMAAAA(v.fechaVencimiento),
+      TipoCpDoc: tipoCp,
+      Serie: serie,
+      NroInicial: numero,
+      NroFinal: '',
+      TipoDocIdentidad: catalogo06PorDocumento(v.rucClienteFinal),
+      NroDocIdentidad: docId,
+      RazonSocial: v.razonSocialClienteFinal || '',
+      ValorFacturadoExportacion: neg(v.valorExportacion || 0),
+      BiGravada: neg(v.biGravada),
+      DsctoBI: 0,
+      IgvDG: neg(igv),
+      DsctoIgv: 0,
+      MtoExonerado: neg(v.montoExonerado || 0),
+      MtoInafecto: neg(v.montoInafecto || 0),
+      Isc: neg(v.isc || 0),
+      BiGravIvap: 0,
+      Ivap: 0,
+      Icbper: neg(v.icbper || 0),
+      OtrosTributos: 0,
+      TotalCP: neg(v.montoTotal),
+      Moneda: v.moneda || 'PEN',
+      TipoCambio: (v.moneda==='USD') ? v.tipoCambio : '',
+      DocModFechaEmision: isoADDMMAAAA(v.docModificadoFechaEmision),
+      DocModTipoCp: v.docModificadoTipoCp ? (CATALOGO01_POR_TIPO[v.docModificadoTipoCp]||'') : '',
+      DocModSerie: v.docModificadoSerie || '',
+      DocModNumero: v.docModificadoNumero || '',
+      IdProyecto: ''
+    };
+  }
+
+  let rvieVentas = []; // comprobantes_venta crudos del período cargado, para poder "Editar" y recargar
+
+  document.getElementById('btnRvieCargar').addEventListener('click', ()=>{
+    const clienteId = document.getElementById('rvieCliente').value;
+    const anio = document.getElementById('rvieAnio').value.trim();
+    const mes = document.getElementById('rvieMes').value;
+    const resumen = document.getElementById('rvieResumen');
+    if(!clienteId){ showToast('Selecciona un cliente', true); return; }
+    if(!anio || !mes){ showToast('Ingresa año y mes del período', true); return; }
+    const cliente = state.clientes.find(c=>c.id===clienteId);
+    if(!cliente?.ruc){ showToast('El cliente no tiene RUC registrado', true); return; }
+    const prefijo = `${anio}-${mes}`;
+    rvieVentas = state.comprobantesVenta
+      .filter(v=>v.clienteId===clienteId && (v.fechaEmision||'').startsWith(prefijo))
+      .sort((a,b)=> (a.fechaEmision||'').localeCompare(b.fechaEmision||''));
+    document.getElementById('rviePanelResultados').style.display = rvieVentas.length ? '' : 'none';
+    resumen.textContent = rvieVentas.length
+      ? `${rvieVentas.length} comprobante(s) de venta en ${prefijo} para ${cliente.nombre}.`
+      : `No hay comprobantes de venta registrados para ${cliente.nombre} en ${prefijo}.`;
+    renderRvieTable();
+    document.getElementById('rvieValidationMsg').innerHTML = '';
+    document.getElementById('rvieDownloadActions').style.display = 'none';
+  });
+
+  function renderRvieTable(){
+    const cols = ['Fecha','Tipo','Serie-Número','Cliente final','Moneda','Total','BI Gravada','IGV (calc.)',''];
+    const cliente = state.clientes.find(c=>c.id===document.getElementById('rvieCliente').value);
+    const anio = document.getElementById('rvieAnio').value.trim();
+    const mes = document.getElementById('rvieMes').value;
+    const periodo = `${anio}${mes}`;
+    const filas = rvieVentas.map((v,i)=> buildRvieRow(v, cliente, periodo, i+1));
+    document.getElementById('rvieTable').innerHTML =
+      '<thead><tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr></thead><tbody>'+
+      rvieVentas.map((v,i)=>{
+        const r = filas[i];
+        const faltaBi = v.biGravada===null || v.biGravada===undefined || v.biGravada==='';
+        return '<tr>'+
+          `<td>${v.fechaEmision||'<i>—</i>'}</td>`+
+          `<td>${v.tipoComprobante}</td>`+
+          `<td>${v.numeroComprobante||'<i>—</i>'}</td>`+
+          `<td>${escapeHtml(v.razonSocialClienteFinal||'')||'<i>—</i>'}</td>`+
+          `<td>${v.moneda}</td>`+
+          `<td>${fmtMoney(v.montoTotal, v.moneda)}</td>`+
+          `<td${faltaBi?' style="color:var(--danger); font-weight:700;"':''}>${faltaBi?'⚠ falta':fmtMoney(v.biGravada, v.moneda)}</td>`+
+          `<td>${r.IgvDG===''?'<i>—</i>':fmtMoney(r.IgvDG, v.moneda)}</td>`+
+          `<td><button class="btn btn-outline btn-sm" onclick="editarVentaClick('${v.id}')">Editar</button></td>`+
+          '</tr>';
+      }).join('')+
+      '</tbody>';
+  }
+
+  document.getElementById('btnRvieValidar').addEventListener('click', ()=>{
+    const cliente = state.clientes.find(c=>c.id===document.getElementById('rvieCliente').value);
+    const anio = document.getElementById('rvieAnio').value.trim();
+    const mes = document.getElementById('rvieMes').value;
+    const periodo = `${anio}${mes}`;
+    const parsed = rvieVentas.map((v,i)=> validarFilaRvie(buildRvieRow(v, cliente, periodo, i+1)));
+    const errs = [];
+    parsed.forEach((r,i)=> r.errs.forEach(e=> errs.push(`Fila ${i+1} (${rvieVentas[i].numeroComprobante||'sin número'}): ${e}`)));
+
+    const msg = document.getElementById('rvieValidationMsg');
+    if(errs.length>0){
+      msg.innerHTML = `<div class="g4-status error"><span class="dot"></span> ${errs.length} error(es):</div><ul class="g4-errlist">`+errs.map(e=>`<li>${e}</li>`).join('')+'</ul>';
+      document.getElementById('rvieDownloadActions').style.display = 'none';
+    } else {
+      msg.innerHTML = `<div class="g4-status ok"><span class="dot"></span> Todo validado. Listo para descargar.</div>`;
+      document.getElementById('rvieDownloadActions').style.display = '';
+      window._rvieParsed = {parsed, ruc: soloDigitos(cliente?.ruc), periodo};
+    }
+  });
+
+  document.getElementById('btnRvieDescargar').addEventListener('click', ()=>{
+    if(!window._rvieParsed) return;
+    const {parsed, ruc} = window._rvieParsed;
+    const anio = document.getElementById('rvieAnio').value.trim();
+    const mes = document.getElementById('rvieMes').value;
+    const lines = parsed.map(r=> r.txtOut.join('|') + '|');
+    const content = lines.join('\r\n') + '\r\n';
+    const blob = new Blob([content], {type:'text/plain;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    // Convención PLE clásica, confirmada contra 2 archivos reales ya aceptados por
+    // SUNAT: LE + RUC(11) + período AAAAMM+"00" (8 dígitos, día fijo en 00 para libros
+    // mensuales) + "14" (código de libro, Registro de Ventas e Ingresos) + "0400021112"
+    // (bloque de indicadores fijo — idéntico en ambos archivos reales comparados).
+    a.download = `LE${ruc}${anio}${mes}00140400021112.txt`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('rvieCliente').addEventListener('change', ()=>{
+    document.getElementById('rviePanelResultados').style.display = 'none';
+    document.getElementById('rvieResumen').textContent = '';
+  });
+
+  // Tras editar un comprobante desde el botón "Editar" de la tabla (guardarVenta llama
+  // a renderAll al terminar), refresca esta tabla con los datos ya actualizados en
+  // state.comprobantesVenta — sin esto quedaría mostrando los valores viejos.
+  window.refrescarSireRvie = function(){
+    const panel = document.getElementById('rviePanelResultados');
+    if(!panel || panel.style.display==='none' || rvieVentas.length===0) return;
+    rvieVentas = rvieVentas.map(v=> state.comprobantesVenta.find(x=>x.id===v.id) || v);
+    renderRvieTable();
+    document.getElementById('rvieValidationMsg').innerHTML = '';
+    document.getElementById('rvieDownloadActions').style.display = 'none';
+  };
+})();
+
+/* ================= SIRE — RCE (Registro de Compras) ================= */
+/* Mismo patrón que RVIE arriba: genera el "archivo de Reemplazo" del Anexo 11
+   (R.S. 00040-2022/SUNAT). Campos 1-37 los llena el contribuyente (a partir de
+   comprobantes_compra); 38-41 (info complementaria SUNAT) van vacíos pero SÍ se
+   incluyen — 42-80 (CLU1-39) se OMITEN por completo. Confirmado campo por campo
+   contra un archivo real ya aceptado por SUNAT: el archivo termina en el campo 41
+   (37 + 4), nunca llega a 80. */
+(function(){
+  const RCE_COLS = [
+    {name:'RUC', type:'A', max:11, required:true},
+    {name:'RazonSocialPropia', type:'A', max:1500, required:true},
+    {name:'Periodo', type:'A', max:6, required:true},
+    {name:'CAR', type:'blank'},
+    {name:'FechaEmision', type:'fecha', required:true},
+    {name:'FechaVctoPago', type:'fecha'},
+    {name:'TipoCpDoc', type:'A', max:2, required:true},
+    {name:'Serie', type:'A', max:20},
+    {name:'Anio', type:'A', max:4}, // confirmado siempre vacío en un archivo real (109/109 líneas) — SUNAT no lo exige poblado
+    {name:'NroInicial', type:'A', max:20, required:true},
+    {name:'NroFinal', type:'A', max:20}, // confirmado siempre vacío, igual que en RVIE
+    {name:'TipoDocIdentidad', type:'A', max:1},
+    {name:'NroDocIdentidad', type:'A', max:15},
+    {name:'RazonSocialProveedor', type:'A', max:1500},
+    {name:'BiGravadoDG', type:'monto', dec:2},
+    {name:'IgvDG', type:'monto', dec:2},
+    {name:'BiGravadoDGNG', type:'monto', dec:2},
+    {name:'IgvDGNG', type:'monto', dec:2},
+    {name:'BiGravadoDNG', type:'monto', dec:2},
+    {name:'IgvDNG', type:'monto', dec:2},
+    {name:'ValorAdqNG', type:'monto', dec:2},
+    {name:'Isc', type:'monto', dec:2},
+    {name:'Icbper', type:'monto', dec:2},
+    {name:'OtrosTribCargos', type:'monto', dec:2},
+    {name:'TotalCP', type:'monto', dec:2, required:true},
+    {name:'Moneda', type:'A', max:3, required:true, allowed:['PEN','USD']},
+    {name:'TipoCambio', type:'tc'},
+    {name:'DocModFechaEmision', type:'fecha'},
+    {name:'DocModTipoCp', type:'A', max:2},
+    {name:'DocModSerie', type:'A', max:20},
+    {name:'CodDamDsi', type:'A', max:3},
+    {name:'DocModNumero', type:'A', max:20},
+    {name:'ClasifBssSss', type:'A', max:1},
+    {name:'IdProyecto', type:'A', max:50},
+    {name:'PorcPart', type:'A', max:5},
+    {name:'Imb', type:'A', max:20},
+    {name:'CarOrig', type:'blank'},
+  ];
+  const VACIAS_RCE = new Array(4).fill(''); // campos 38-41 (info complementaria SUNAT) — 42-80 (CLU) se omiten por completo
+
+  function formatMontoRce(v, dec){
+    const n = Number(v)||0;
+    return n.toFixed(dec);
+  }
+  function formatTCRce(v){
+    if(v===undefined || v===null || v==='') return '';
+    const n = Number(v);
+    if(isNaN(n) || n<=0) return '';
+    return n.toFixed(3);
+  }
+
+  function validarFilaRce(row){
+    const errs = [];
+    const out = [];
+    RCE_COLS.forEach(col=>{
+      let raw = row[col.name];
+      if(raw===undefined || raw===null) raw = '';
+      raw = typeof raw==='string' ? raw.trim() : raw;
+
+      if(col.type==='blank'){ out.push(''); return; }
+      if(col.required && raw===''){
+        errs.push(`${col.name} es obligatorio`);
+        out.push('');
+        return;
+      }
+      if(col.type==='fecha'){
+        out.push(raw); // ya viene formateada DD/MM/AAAA desde buildRceRow
+      } else if(col.type==='monto'){
+        out.push(formatMontoRce(raw, col.dec));
+      } else if(col.type==='tc'){
+        out.push(formatTCRce(raw));
+      } else {
+        const s = String(raw);
+        if(col.allowed && s!=='' && !col.allowed.includes(s)){
+          errs.push(`${col.name}="${s}" no es válido (debe ser ${col.allowed.join('/')})`);
+        }
+        if(col.max && s.length>col.max){
+          errs.push(`${col.name} excede ${col.max} caracteres`);
+        }
+        out.push(s);
+      }
+    });
+
+    // Nota de crédito (07) / Nota de débito (08): el documento modificado es obligatorio.
+    const tipoCp = out[RCE_COLS.findIndex(c=>c.name==='TipoCpDoc')];
+    if(tipoCp==='07' || tipoCp==='08'){
+      const campos = ['DocModFechaEmision','DocModTipoCp','DocModSerie','DocModNumero'];
+      campos.forEach(nombre=>{
+        const idx = RCE_COLS.findIndex(c=>c.name===nombre);
+        if(!out[idx]) errs.push(`${nombre} es obligatorio en Notas de crédito/débito (documento que modifican)`);
+      });
+    }
+
+    // Moneda USD: el tipo de cambio es obligatorio.
+    const moneda = out[RCE_COLS.findIndex(c=>c.name==='Moneda')];
+    const tc = out[RCE_COLS.findIndex(c=>c.name==='TipoCambio')];
+    if(moneda==='USD' && !tc){
+      errs.push('TipoCambio es obligatorio cuando Moneda=USD');
+    }
+
+    // BI Gravada se reparte entre BiGravadoDG/DGNG/DNG según la clasificación, así que
+    // ninguna columna individual queda marcada "required" en RCE_COLS — sin este check,
+    // un comprobante nunca revisado (bi_gravada null) exportaría 0.00 en silencio.
+    if(row._biGravadaSinRevisar){
+      errs.push('BI Gravada es obligatorio (revísalo desde "Editar")');
+    }
+
+    const txtOut = out.concat(VACIAS_RCE);
+    return {out, errs, txtOut};
+  }
+
+  function buildRceRow(c, cliente, periodoAAAAMM, idx){
+    const {serie, numero} = splitNumeroComprobanteSire(c.numeroComprobante);
+    const docId = soloDigitos(c.rucProveedor);
+    const biGravadaSinRevisar = (c.biGravada===null || c.biGravada===undefined || c.biGravada==='');
+    let igv = '';
+    if(c.biGravada !== null && c.biGravada !== undefined && c.biGravada !== ''){
+      const bi = Number(c.biGravada)||0;
+      const total = Number(c.montoTotal)||0;
+      const exo = Number(c.montoExonerado)||0;
+      const ina = Number(c.montoInafecto)||0;
+      const isc = Number(c.isc)||0;
+      const icb = Number(c.icbper)||0;
+      igv = Math.round((total - bi - exo - ina - isc - icb)*100)/100;
+    }
+    // BI Gravada + IGV van al par de columnas DG/DGNG/DNG según la clasificación de
+    // crédito fiscal elegida en el comprobante — nunca a más de un par a la vez, un
+    // mismo comprobante representa un solo destino de uso.
+    const clasif = c.clasificacionCreditoIgv || 'DG';
+    const biDG = clasif==='DG' ? (c.biGravada||0) : 0;
+    const igvDG = clasif==='DG' ? igv : 0;
+    const biDGNG = clasif==='DGNG' ? (c.biGravada||0) : 0;
+    const igvDGNG = clasif==='DGNG' ? igv : 0;
+    const biDNG = clasif==='DNG' ? (c.biGravada||0) : 0;
+    const igvDNG = clasif==='DNG' ? igv : 0;
+    const valorAdqNG = (Number(c.montoExonerado)||0) + (Number(c.montoInafecto)||0);
+    const tipoCp = CATALOGO01_POR_TIPO[c.tipoComprobante] || '00';
+    // Nota de crédito (07): confirmado contra un archivo real que sus montos van en
+    // NEGATIVO (3 pares factura/NC revisados, todos coinciden). Nota de débito (08) NO
+    // se niega — convención estándar, sin ejemplo real que lo confirme.
+    const signo = (tipoCp==='07') ? -1 : 1;
+    const neg = (n) => Math.round(Number(n||0)*signo*100)/100;
+    return {
+      RUC: soloDigitos(cliente?.ruc),
+      RazonSocialPropia: cliente?.nombre || '',
+      Periodo: periodoAAAAMM,
+      CAR: '',
+      FechaEmision: isoADDMMAAAA(c.fechaEmision),
+      // Confirmado contra un archivo real: cuando no hay fecha de vencimiento, RCE usa
+      // el centinela "01/01/1900" en vez de dejar el campo vacío (a diferencia de
+      // RVIE, que sí lo deja vacío — son convenciones distintas por tipo de libro).
+      FechaVctoPago: isoADDMMAAAA(c.fechaVencimiento) || '01/01/1900',
+      TipoCpDoc: tipoCp,
+      Serie: serie,
+      Anio: '', // confirmado siempre vacío en un archivo real (109/109 líneas)
+      NroInicial: numero,
+      NroFinal: '', // confirmado siempre vacío, igual que en RVIE
+      TipoDocIdentidad: catalogo06PorDocumento(c.rucProveedor),
+      NroDocIdentidad: docId,
+      RazonSocialProveedor: c.razonSocialProveedor || '',
+      BiGravadoDG: neg(biDG),
+      IgvDG: neg(igvDG),
+      BiGravadoDGNG: neg(biDGNG),
+      IgvDGNG: neg(igvDGNG),
+      BiGravadoDNG: neg(biDNG),
+      IgvDNG: neg(igvDNG),
+      ValorAdqNG: neg(valorAdqNG),
+      Isc: neg(c.isc || 0),
+      Icbper: neg(c.icbper || 0),
+      OtrosTribCargos: 0,
+      TotalCP: neg(c.montoTotal),
+      Moneda: c.moneda || 'PEN',
+      TipoCambio: (c.moneda==='USD') ? c.tipoCambio : '',
+      DocModFechaEmision: isoADDMMAAAA(c.docModificadoFechaEmision),
+      DocModTipoCp: c.docModificadoTipoCp ? (CATALOGO01_POR_TIPO[c.docModificadoTipoCp]||'') : '',
+      DocModSerie: c.docModificadoSerie || '',
+      CodDamDsi: '', // fuera de alcance — solo importaciones
+      DocModNumero: c.docModificadoNumero || '',
+      ClasifBssSss: c.clasificacionBienesServicios || '',
+      IdProyecto: '', // fuera de alcance
+      PorcPart: '', // fuera de alcance
+      Imb: '', // significado no confirmado — se deja vacío a propósito
+      CarOrig: '',
+      _biGravadaSinRevisar: biGravadaSinRevisar,
+    };
+  }
+
+  let rceCompras = []; // comprobantes_compra crudos del período cargado, para poder "Editar" y recargar
+
+  document.getElementById('btnRceCargar').addEventListener('click', ()=>{
+    const clienteId = document.getElementById('rceCliente').value;
+    const anio = document.getElementById('rceAnio').value.trim();
+    const mes = document.getElementById('rceMes').value;
+    const resumen = document.getElementById('rceResumen');
+    if(!clienteId){ showToast('Selecciona un cliente', true); return; }
+    if(!anio || !mes){ showToast('Ingresa año y mes del período', true); return; }
+    const cliente = state.clientes.find(c=>c.id===clienteId);
+    if(!cliente?.ruc){ showToast('El cliente no tiene RUC registrado', true); return; }
+    const prefijo = `${anio}-${mes}`;
+    rceCompras = state.comprobantesCompra
+      .filter(c=>c.clienteId===clienteId && (c.fechaEmision||'').startsWith(prefijo))
+      .sort((a,b)=> (a.fechaEmision||'').localeCompare(b.fechaEmision||''));
+    document.getElementById('rcePanelResultados').style.display = rceCompras.length ? '' : 'none';
+    resumen.textContent = rceCompras.length
+      ? `${rceCompras.length} comprobante(s) de compra en ${prefijo} para ${cliente.nombre}.`
+      : `No hay comprobantes de compra registrados para ${cliente.nombre} en ${prefijo}.`;
+    renderRceTable();
+    document.getElementById('rceValidationMsg').innerHTML = '';
+    document.getElementById('rceDownloadActions').style.display = 'none';
+  });
+
+  function renderRceTable(){
+    const cols = ['Fecha','Tipo','Serie-Número','Proveedor','Clasif.','Moneda','Total','BI Gravada','IGV (calc.)',''];
+    const cliente = state.clientes.find(c=>c.id===document.getElementById('rceCliente').value);
+    const anio = document.getElementById('rceAnio').value.trim();
+    const mes = document.getElementById('rceMes').value;
+    const periodo = `${anio}${mes}`;
+    const filas = rceCompras.map((c,i)=> buildRceRow(c, cliente, periodo, i+1));
+    document.getElementById('rceTable').innerHTML =
+      '<thead><tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr></thead><tbody>'+
+      rceCompras.map((c,i)=>{
+        const r = filas[i];
+        const faltaBi = c.biGravada===null || c.biGravada===undefined || c.biGravada==='';
+        return '<tr>'+
+          `<td>${c.fechaEmision||'<i>—</i>'}</td>`+
+          `<td>${c.tipoComprobante}</td>`+
+          `<td>${c.numeroComprobante||'<i>—</i>'}</td>`+
+          `<td>${escapeHtml(c.razonSocialProveedor||'')||'<i>—</i>'}</td>`+
+          `<td>${c.clasificacionCreditoIgv||'DG'}</td>`+
+          `<td>${c.moneda}</td>`+
+          `<td>${fmtMoney(c.montoTotal, c.moneda)}</td>`+
+          `<td${faltaBi?' style="color:var(--danger); font-weight:700;"':''}>${faltaBi?'⚠ falta':fmtMoney(c.biGravada, c.moneda)}</td>`+
+          `<td>${(r.IgvDG===0&&r.IgvDGNG===0&&r.IgvDNG===0&&faltaBi)?'<i>—</i>':fmtMoney(r.IgvDG+r.IgvDGNG+r.IgvDNG, c.moneda)}</td>`+
+          `<td><button class="btn btn-outline btn-sm" onclick="editarCompraClick('${c.id}')">Editar</button></td>`+
+          '</tr>';
+      }).join('')+
+      '</tbody>';
+  }
+
+  document.getElementById('btnRceValidar').addEventListener('click', ()=>{
+    const cliente = state.clientes.find(c=>c.id===document.getElementById('rceCliente').value);
+    const anio = document.getElementById('rceAnio').value.trim();
+    const mes = document.getElementById('rceMes').value;
+    const periodo = `${anio}${mes}`;
+    const parsed = rceCompras.map((c,i)=> validarFilaRce(buildRceRow(c, cliente, periodo, i+1)));
+    const errs = [];
+    parsed.forEach((r,i)=> r.errs.forEach(e=> errs.push(`Fila ${i+1} (${rceCompras[i].numeroComprobante||'sin número'}): ${e}`)));
+
+    const msg = document.getElementById('rceValidationMsg');
+    if(errs.length>0){
+      msg.innerHTML = `<div class="g4-status error"><span class="dot"></span> ${errs.length} error(es):</div><ul class="g4-errlist">`+errs.map(e=>`<li>${e}</li>`).join('')+'</ul>';
+      document.getElementById('rceDownloadActions').style.display = 'none';
+    } else {
+      msg.innerHTML = `<div class="g4-status ok"><span class="dot"></span> Todo validado. Listo para descargar.</div>`;
+      document.getElementById('rceDownloadActions').style.display = '';
+      window._rceParsed = {parsed, ruc: soloDigitos(cliente?.ruc), periodo};
+    }
+  });
+
+  document.getElementById('btnRceDescargar').addEventListener('click', ()=>{
+    if(!window._rceParsed) return;
+    const {parsed, ruc} = window._rceParsed;
+    const anio = document.getElementById('rceAnio').value.trim();
+    const mes = document.getElementById('rceMes').value;
+    const lines = parsed.map(r=> r.txtOut.join('|') + '|');
+    const content = lines.join('\r\n') + '\r\n';
+    const blob = new Blob([content], {type:'text/plain;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    // Convención PLE clásica, confirmada contra 2 archivos reales ya aceptados por
+    // SUNAT: LE + RUC(11) + período AAAAMM+"00" (8 dígitos) + "08" (código de libro,
+    // Registro de Compras — el único carácter que difiere del de RVIE, "14") +
+    // "0400021112" (mismo bloque de indicadores fijo que en RVIE).
+    a.download = `LE${ruc}${anio}${mes}00080400021112.txt`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('rceCliente').addEventListener('change', ()=>{
+    document.getElementById('rcePanelResultados').style.display = 'none';
+    document.getElementById('rceResumen').textContent = '';
+  });
+
+  window.refrescarSireRce = function(){
+    const panel = document.getElementById('rcePanelResultados');
+    if(!panel || panel.style.display==='none' || rceCompras.length===0) return;
+    rceCompras = rceCompras.map(c=> state.comprobantesCompra.find(x=>x.id===c.id) || c);
+    renderRceTable();
+    document.getElementById('rceValidationMsg').innerHTML = '';
+    document.getElementById('rceDownloadActions').style.display = 'none';
+  };
+})();
+
 /* ================= LEER PDF DE SUNAT (autocompletar impuestos) ================= */
 (function(){
   if(typeof pdfjsLib !== 'undefined'){
@@ -7433,6 +8444,239 @@ async function importarDatos(data){
   });
 })();
 
+/* ================= TIPO DE CAMBIO SUNAT ================= */
+/* Dos formas de llenar tipo_cambio_sunat: (1) subir el reporte mensual PDF
+   oficial de SUNAT — formato fijo de 4 columnas (Día/Compra/Venta) repetidas
+   por fila, se aplana en texto plano como tríos "día compra venta" al usar
+   getTextContent() (mismo patrón que "Leer PDF de SUNAT"/"Leer mi recibo
+   RHE" — sin IA, es un formato oficial fijo); (2) consultar un día suelto,
+   reutilizando obtenerTipoCambio() (caché + Worker con Browser Rendering). */
+(function(){
+  const MESES_ES_A_NUM = {
+    'ENERO':1,'FEBRERO':2,'MARZO':3,'ABRIL':4,'MAYO':5,'JUNIO':6,
+    'JULIO':7,'AGOSTO':8,'SEPTIEMBRE':9,'SETIEMBRE':9,'OCTUBRE':10,'NOVIEMBRE':11,'DICIEMBRE':12
+  };
+  const NOMBRES_MES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  function pad2TC(n){ return String(n).padStart(2,'0'); }
+
+  async function extraerTextoPdfTC(file){
+    if(typeof pdfjsLib === 'undefined'){
+      throw new Error('La librería de lectura de PDF no cargó (problema de conexión). Refresca la página con mejor internet e inténtalo de nuevo.');
+    }
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data: buf}).promise;
+    let texto = '';
+    for(let i=1;i<=pdf.numPages;i++){
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      texto += content.items.map(it=>it.str).join(' ') + ' ';
+    }
+    return texto;
+  }
+
+  // La grilla de 4 columnas repetidas se aplana en texto como tríos "día
+  // compra venta" seguidos — no importa si el PDF los emite fila por fila o
+  // columna por columna, cada trío se captura independiente (no dependemos
+  // del orden) y se ordena por día al final. El formato exacto de 3
+  // decimales (3.391) evita falsos positivos con otros números del
+  // documento; cortar antes de "Notas:" es una red de seguridad extra.
+  function parsearReporteTC(texto){
+    const mMes = texto.match(/\b([A-ZÑ]+)\s*-\s*(\d{4})\b/);
+    if(!mMes || !(mMes[1] in MESES_ES_A_NUM)){
+      throw new Error('No se reconoció el mes/año del reporte (se esperaba algo como "AGOSTO - 2026").');
+    }
+    const anio = Number(mMes[2]);
+    const mes = MESES_ES_A_NUM[mMes[1]];
+
+    const idxNotas = texto.indexOf('Notas:');
+    const textoTabla = idxNotas>=0 ? texto.slice(0, idxNotas) : texto;
+
+    const regex = /\b([1-9]|[12]\d|3[01])\s+(\d\.\d{3})\s+(\d\.\d{3})\b/g;
+    const diasUnicos = new Map();
+    let m;
+    while((m = regex.exec(textoTabla))){
+      diasUnicos.set(Number(m[1]), { compra: Number(m[2]), venta: Number(m[3]) });
+    }
+    if(diasUnicos.size===0){
+      throw new Error('No se encontraron filas de tipo de cambio en el PDF — revisa que sea el reporte mensual oficial de SUNAT.');
+    }
+
+    const diasEnMes = new Date(anio, mes, 0).getDate();
+    const filas = [];
+    for(let d=1; d<=diasEnMes; d++){
+      if(diasUnicos.has(d)) filas.push({ dia:d, ...diasUnicos.get(d) });
+    }
+    return { anio, mes, diasEnMes, filas };
+  }
+
+  let tcMesActual = null; // {anio, mes} del PDF cargado actualmente, para el guardado
+
+  function renderTablaPreviewTC(filas){
+    document.getElementById('tcTablaPreview').innerHTML =
+      '<thead><tr><th>Día</th><th>Compra</th><th>Venta</th></tr></thead><tbody>'+
+      filas.map(f=>`<tr data-dia="${f.dia}">
+        <td>${f.dia}</td>
+        <td><input type="number" step="0.001" class="tcCompraInput" value="${f.compra}" style="width:90px;"></td>
+        <td><input type="number" step="0.001" class="tcVentaInput" value="${f.venta}" style="width:90px;"></td>
+      </tr>`).join('')+
+      '</tbody>';
+  }
+
+  document.getElementById('tcArchivoPdf').addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    try{
+      const texto = await extraerTextoPdfTC(file);
+      const { anio, mes, diasEnMes, filas } = parsearReporteTC(texto);
+      tcMesActual = { anio, mes };
+      document.getElementById('tcPreviewTitulo').textContent = `Vista previa — ${NOMBRES_MES[mes]} ${anio}`;
+      const aviso = document.getElementById('tcPreviewAviso');
+      aviso.textContent = filas.length===diasEnMes
+        ? `${filas.length} día(s) leídos correctamente. Revisa los valores y confirma para guardar.`
+        : `⚠ Se leyeron ${filas.length} de ${diasEnMes} días del mes — revisa y completa lo que falte antes de guardar.`;
+      renderTablaPreviewTC(filas);
+      document.getElementById('tcPanelPreview').style.display = '';
+    }catch(err){
+      showToast('No se pudo leer el PDF: ' + err.message, true);
+    }finally{
+      e.target.value = '';
+    }
+  });
+
+  document.getElementById('btnTcGuardarMes').addEventListener('click', async ()=>{
+    if(!tcMesActual) return;
+    const filas = [...document.querySelectorAll('#tcTablaPreview tbody tr')].map(tr=>({
+      dia: Number(tr.dataset.dia),
+      compra: Number(tr.querySelector('.tcCompraInput').value),
+      venta: Number(tr.querySelector('.tcVentaInput').value)
+    }));
+    if(filas.some(f=>!f.compra || !f.venta)){
+      showToast('Hay filas con compra/venta vacío o inválido — corrígelas antes de guardar.', true);
+      return;
+    }
+    const { anio, mes } = tcMesActual;
+    if(!confirm(`¿Guardar ${filas.length} día(s) de ${NOMBRES_MES[mes]} ${anio} en la caché de tipo de cambio? Si alguna fecha ya estaba guardada, se sobrescribe con estos valores.`)) return;
+
+    const btn = document.getElementById('btnTcGuardarMes');
+    btn.disabled = true; btn.textContent = 'Guardando...';
+    try{
+      const upsertRows = filas.map(f=>({
+        fecha: `${anio}-${pad2TC(mes)}-${pad2TC(f.dia)}`,
+        compra: f.compra,
+        venta: f.venta
+      }));
+      const { error } = await sb.from('tipo_cambio_sunat').upsert(upsertRows);
+      if(error) throw error;
+      showToast(`${upsertRows.length} día(s) guardados.`);
+      document.getElementById('tcPanelPreview').style.display = 'none';
+      tcMesActual = null;
+      tcCargarTablaGuardada();
+    }catch(err){
+      showToast('Error guardando: ' + err.message, true);
+    }finally{
+      btn.disabled = false; btn.textContent = 'Guardar en tipo de cambio';
+    }
+  });
+
+  // "Consultar un día específico" era una consulta automática vía el Worker
+  // (Browser Rendering) — se confirmó con logs reales que SUNAT bloquea esas
+  // conexiones a nivel de red (net::ERR_CONNECTION_RESET, consistente en
+  // todos los intentos, no transitorio) — no es viable arreglarlo con más
+  // reintentos. Se reemplaza por carga manual: el usuario revisa el valor en
+  // la página oficial de SUNAT desde su propio navegador (eso sí funciona) y
+  // lo tipea aquí.
+  document.getElementById('btnTcGuardarManual').addEventListener('click', async ()=>{
+    const fecha = document.getElementById('tcFechaManual').value;
+    const compra = Number(document.getElementById('tcCompraManual').value);
+    const venta = Number(document.getElementById('tcVentaManual').value);
+    if(!fecha){ showToast('Elige una fecha', true); return; }
+    if(!compra || !venta){ showToast('Completa compra y venta', true); return; }
+
+    const btn = document.getElementById('btnTcGuardarManual');
+    btn.disabled = true; btn.textContent = 'Guardando...';
+    try{
+      const { error } = await sb.from('tipo_cambio_sunat').upsert({ fecha, compra, venta });
+      if(error) throw error;
+      showToast(`Tipo de cambio del ${fmtFecha(fecha)} guardado.`);
+      document.getElementById('tcFechaManual').value = '';
+      document.getElementById('tcCompraManual').value = '';
+      document.getElementById('tcVentaManual').value = '';
+      tcCargarTablaGuardada();
+    }catch(err){
+      showToast('Error guardando: ' + err.message, true);
+    }finally{
+      btn.disabled = false; btn.textContent = 'Guardar';
+    }
+  });
+
+  // ---- Tabla navegable de lo ya guardado (‹ Mes Año ›) ----
+  let tcPeriodoActual = periodoActualComprobantes(); // 'YYYY-MM', mismo helper que Ventas/Mis Comprobantes
+
+  async function tcCargarTablaGuardada(){
+    const label = document.getElementById('tcPeriodoLabel');
+    const tabla = document.getElementById('tcTablaGuardada');
+    const btnGuardar = document.getElementById('btnTcGuardarEdicion');
+    if(!label || !tabla) return; // la vista aún no está en el DOM
+    label.textContent = fmtPeriodo(tcPeriodoActual);
+
+    const [anio, mes] = tcPeriodoActual.split('-').map(Number);
+    const diasEnMes = new Date(anio, mes, 0).getDate();
+    const inicio = `${tcPeriodoActual}-01`;
+    const fin = `${tcPeriodoActual}-${pad2TC(diasEnMes)}`;
+    const { data, error } = await sb.from('tipo_cambio_sunat').select('fecha, compra, venta').gte('fecha', inicio).lte('fecha', fin).order('fecha');
+
+    if(error){
+      tabla.innerHTML = `<thead><tr><th>Día</th><th>Compra</th><th>Venta</th></tr></thead><tbody><tr class="empty-row"><td colspan="3">No se pudo cargar: ${escapeHtml(error.message)}</td></tr></tbody>`;
+      btnGuardar.style.display = 'none';
+      return;
+    }
+    if(!data || data.length===0){
+      tabla.innerHTML = `<thead><tr><th>Día</th><th>Compra</th><th>Venta</th></tr></thead><tbody><tr class="empty-row"><td colspan="3">No hay tipos de cambio guardados para ${fmtPeriodo(tcPeriodoActual)} — usa "Subir reporte mensual" o "Consultar un día específico" para agregarlos.</td></tr></tbody>`;
+      btnGuardar.style.display = 'none';
+      return;
+    }
+    tabla.innerHTML = '<thead><tr><th>Día</th><th>Compra</th><th>Venta</th></tr></thead><tbody>'+
+      data.map(row=>`<tr data-fecha="${row.fecha}">
+        <td>${Number(row.fecha.slice(8,10))}</td>
+        <td><input type="number" step="0.001" class="tcGuardadaCompraInput" value="${row.compra}" style="width:90px;"></td>
+        <td><input type="number" step="0.001" class="tcGuardadaVentaInput" value="${row.venta}" style="width:90px;"></td>
+      </tr>`).join('')+
+      '</tbody>';
+    btnGuardar.style.display = '';
+  }
+
+  function tcNavPeriodo(delta){
+    tcPeriodoActual = sumarMesesPeriodo(tcPeriodoActual, delta);
+    tcCargarTablaGuardada();
+  }
+
+  document.getElementById('btnTcGuardarEdicion').addEventListener('click', async ()=>{
+    const filas = [...document.querySelectorAll('#tcTablaGuardada tbody tr[data-fecha]')].map(tr=>({
+      fecha: tr.dataset.fecha,
+      compra: Number(tr.querySelector('.tcGuardadaCompraInput').value),
+      venta: Number(tr.querySelector('.tcGuardadaVentaInput').value)
+    }));
+    if(filas.some(f=>!f.compra || !f.venta)){
+      showToast('Hay filas con compra/venta vacío o inválido — corrígelas antes de guardar.', true);
+      return;
+    }
+    const btn = document.getElementById('btnTcGuardarEdicion');
+    btn.disabled = true; btn.textContent = 'Guardando...';
+    try{
+      const { error } = await sb.from('tipo_cambio_sunat').upsert(filas);
+      if(error) throw error;
+      showToast('Cambios guardados.');
+    }catch(err){
+      showToast('Error guardando: ' + err.message, true);
+    }finally{
+      btn.disabled = false; btn.textContent = 'Guardar cambios';
+    }
+  });
+
+  // Accesibles desde el atributo onclick del HTML y desde renderAll() (más abajo).
+  window.tcNavPeriodo = tcNavPeriodo;
+  window.tcCargarTablaGuardada = tcCargarTablaGuardada;
+})();
 
 /* ================= MULTAS SUNAT (calculadora) ================= */
 
